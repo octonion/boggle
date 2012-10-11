@@ -1,0 +1,7 @@
+To compile:
+
+g++ -std=c++0x -pthread -O3 boggle.cpp
+
+To run:
+
+time ./a.out Boggle83.cub words.txt > out.txt
