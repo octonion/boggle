@@ -18,7 +18,7 @@ const int threads=1;
 const int rows=4;
 const int columns=4;
 
-const long total_shakes=1000000;
+const long total_shakes=100000;
 long shakes=0;
 long my_shakes[threads];
 
@@ -230,6 +230,8 @@ void *sim(void *str) {
 
   //cout << thread << ": done simming " << shakes << " shakes" << endl;
 
+  return 0;
+
 }
 
 int main(int argc, char* argv[]){
@@ -301,7 +303,7 @@ int main(int argc, char* argv[]){
   for (thread=0; thread<threads; thread++) {
     pthread_join(iThreadId[thread], NULL);
     cout << thread << ": " << my_shakes[thread] << endl;
-    //print_dawg(dawg[thread]);
+    print_dawg(dawg[thread]);
   }
 
   return 0;
