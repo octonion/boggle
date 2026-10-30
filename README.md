@@ -199,41 +199,44 @@ The [October 2026 performance investigation](benchmarks/2026-10-30/README.md)
 records controlled comparisons with the preceding implementation, rejected
 experiments, correctness checks, and relevant sources.
 
-## Ryzen 9 5950X reference benchmarks
+## Ryzen 9 5950X benchmarks
 
-These measurements use the **preceding breadth-first, packed-edge layout**
-preserved at commit `5bb776a`, before the additional bitmap and counter-locality work
-described above. They remain a workstation reference; the new layout's
-controlled measurements are in the linked investigation and use a different
-AMD host.
+Measured on an **AMD Ryzen 9 5950X** (16 physical cores, 32 logical
+threads) using `Boggle83.cub`, **178,548 dictionary words**, **1,000,000
+boards**, and `--seed 42`. Both versions were compiled with GCC
+`-O3 -std=c++17 -pthread -march=znver3`.
 
-Measured on an AMD Ryzen 9 5950X (16 physical cores, 32 logical threads)
-using GCC `-O3`, `Boggle83.cub`, **178,548 loaded words**,
-**1,000,000 boards**, and `--seed 42`.
+The timings below are medians of **three interleaved trials** at each
+thread count, performed on the same workstation. The reference version is
+commit `5bb776a` (breadth-first trie with packed edges); the current
+implementation adds implicit children, neighborhood-letter filtering, a
+two-tile prefix table, and breadth-first counter placement.
 
-| Workers | Simulation time | Boards/second | Speedup vs. 1 worker |
-| ---: | ---: | ---: | ---: |
-| 1 | 8.924 s | 112,054 | 1.00× |
-| 2 | 4.452 s | 224,627 | 2.00× |
-| 4 | 2.346 s | 426,288 | 3.80× |
-| 8 | 1.220 s | 819,997 | 7.32× |
-| 16 | 0.635 s | 1,575,450 | 14.06× |
-| 32 | **0.435 s** | **2,300,200** | **20.53×** |
+| Workers | Previous simulation time | Current simulation time | Current boards/second | Throughput improvement |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 8.958310 s | **5.639310 s** | **177,327** | **+58.9%** |
+| 16 | 0.656888 s | **0.415791 s** | **2,405,055** | **+58.0%** |
+| 32 | 0.443750 s | **0.266992 s** | **3,745,430** | **+66.2%** |
 
-The times measure **simulation only**; they exclude loading the
-dictionary (about 0.14 s with this layout) and printing results.
-These are single benchmark runs rather than statistical summaries, so
-small timing differences can vary with system load. At 16 workers,
-parallel efficiency relative to one worker was about **88%**. Using
-both hardware threads per core improved throughput by about **46%**
-over 16 workers. The breadth-first layout and packed edges gave about
-**17–21% greater throughput** than the preceding implementation across
-the tested worker counts.
+Relative to one worker, the current version scales to about **13.56× at
+16 workers** (84.8% parallel efficiency) and **21.12× at 32 workers**.
+Simultaneous multithreading raises throughput by about **55.7%** from
+16 to 32 workers. With all 32 logical threads, the simulator evaluates
+approximately **3.75 million boards per second**.
 
-On the same hardware, 32 workers are therefore worthwhile for long
-simulations, although the best count depends on CPU, memory hierarchy,
-other workloads, and dictionary size. For short runs, dictionary loading
-and thread-startup time can dominate.
+All rankings and complete `word,frequency` CSV outputs were **byte-identical
+across the two implementations and all tested thread counts**, and all
+10 regression tests passed on the 5950X. These results refer to the
+**simulation stage** only, excluding dictionary construction, thread
+setup outside the measured region, and output. CPU load and compiler
+version can affect results.
+
+For reproducibility, see the
+[October 2026 optimization investigation](benchmarks/2026-10-30/README.md)
+and the `tests/compare_versions.py` utility below. The preceding layout's
+earlier 1/2/4/8/16/32-worker measurements used generic `-O3` builds,
+so they should not be compared directly against the Zen 3-specific
+measurements in this table.
 
 ## Tests and benchmarking
 
