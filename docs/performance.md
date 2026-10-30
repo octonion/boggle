@@ -6,7 +6,9 @@ introduction and usage guide.
 
 The implementation notes below describe the current CPU solver. Benchmark
 figures are **measurements of a particular compiler, dice set, dictionary,
-seed, and machine**, not general throughput guarantees.
+seed, and machine**, not general throughput guarantees. The current Makefile
+uses `ARCH=auto` by default: `-march=native` on most systems and GCC 14
+with `-march=knl` on Xeon Phi. It rebuilds when these settings change.
 
 ## Architecture and performance optimizations
 
@@ -75,16 +77,16 @@ commit `5bb776a` (breadth-first trie with packed edges); the current
 implementation adds implicit children, neighborhood-letter filtering, a
 two-tile prefix table, and breadth-first counter placement.
 
-| Workers | Previous simulation time | Current simulation time | Current boards/second | Throughput improvement |
+| Threads | Previous simulation time | Current simulation time | Current boards/second | Throughput improvement |
 | ---: | ---: | ---: | ---: | ---: |
 | 1 | 8.958310 s | **5.639310 s** | **177,327** | **+58.9%** |
 | 16 | 0.656888 s | **0.415791 s** | **2,405,055** | **+58.0%** |
 | 32 | 0.443750 s | **0.266992 s** | **3,745,430** | **+66.2%** |
 
-Relative to one worker, the current version scales to about **13.56× at
-16 workers** (84.8% parallel efficiency) and **21.12× at 32 workers**.
+Relative to one thread, the current version scales to about **13.56× at
+16 threads** (84.8% parallel efficiency) and **21.12× at 32 threads**.
 Simultaneous multithreading raises throughput by about **55.7%** from
-16 to 32 workers. With all 32 logical threads, the simulator evaluates
+16 to 32 threads. With all 32 logical threads, the simulator evaluates
 approximately **3.75 million boards per second**.
 
 All rankings and complete `word,frequency` CSV outputs were **byte-identical
