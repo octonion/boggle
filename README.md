@@ -1,158 +1,206 @@
 # Boggle word-frequency simulator
 
-A corrected, parallel C++17 implementation of `octonion/boggle`'s Monte Carlo
-simulator. Given a physical Boggle dice set and a word list, it estimates how
-often each dictionary word appears on a randomly shaken board. Each word counts
-**once per board**, even if it can be spelled by several paths.
+A high-performance, parallel C++17 Monte Carlo simulator for the frequencies
+of words on randomly shaken Boggle boards. It builds on the original C++
+program with faster trie traversal, a compact dictionary representation,
+reproducible sampling, and efficient multicore execution.
+
+Each simulated board is created by uniformly shuffling the physical dice and
+independently selecting one of the six faces of each die. A word counts **once
+per board**, even if multiple paths spell it.
 
 ## Build and run
 
-Requires a C++17 compiler and standard POSIX thread support; no Boost dependency.
+Requires a C++17 compiler and POSIX threads. No external libraries are needed.
 
 ```sh
 make
-./boggle Boggle83.cub words.txt --sims 100000 --threads 4 --seed 1 --top 10
-./boggle Boggle83.cub words.txt --sims 100000 --threads 4 --seed 1 --top 20 --csv frequencies.csv
+./boggle Boggle83.cub words.txt --sims 1000000 --threads 16 --seed 42
 ```
 
-The original two-argument invocation still works, with defaults of 100,000
-simulations, one worker, seed 1, and **10 results per word length**:
+The two positional arguments are the **dice file** and **dictionary**.
+The default run uses 100,000 boards, one worker, seed 1, and the top 10
+found words of each spelling length.
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `--sims N` | Number of independently generated boards | `100000` |
+| `--threads N` | Number of workers | `1` |
+| `--seed N` | Reproducible 64-bit random seed | `1` |
+| `--top N` | Maximum displayed words per spelling length | `10` |
+| `--csv FILE` | Additionally save complete `word,frequency` data | None |
+
+For example, to display up to 20 words of each length and retain all
+nonzero frequencies:
 
 ```sh
-./boggle Boggle83.cub words.txt
+./boggle Boggle83.cub words.txt --sims 1000000 --threads 32 \
+    --seed 42 --top 20 --csv frequencies.csv
 ```
 
-Standard output groups words by *written spelling length*, shortest to
-longest. Thus `qu` contributes two characters to the word's length even though
-it occupies one Boggle tile. Within each length, words are ranked by descending
-number of boards on which they appear; ties are sorted alphabetically. A length
-with fewer than `--top N` discovered words prints all discovered words of that
-length. Lengths with no discovered words are omitted.
+Standard output lists lengths from shortest to longest, and within each
+length displays words in descending order of the number of boards on which
+they appear. Equal counts are ordered alphabetically. Groups with fewer
+than `N` found words display them all; lengths with no discoveries are
+omitted. A row shows the word, its integer count, and its estimated
+probability (as a percentage of all simulated boards).
 
-Each ranking row shows the word, integer occurrence count, and estimated
-probability (percentage of all simulated boards). With `--sims 0`, the ranking
-reports that no words were found.
+`--csv FILE` writes an alphabetically sorted CSV file with the header
+`word,frequency`. Here **frequency means the integer count of boards
+containing the word**, not its percentage; only positive counts are
+included. The top-N summary still goes to stdout. Dictionary-loading
+and simulation timings go to stderr. Use `./boggle --help` for help.
 
-Use **`--csv frequencies.csv`** to additionally write the complete sorted
-`word,frequency` table to disk. It starts with the header `word,frequency`;
-`frequency` is the **integer number of boards containing the word**, not a
-normalized probability. Only nonzero frequencies are included, as in the
-original version's stdout output. Standard output continues to show the
-rankings, even when a CSV file is requested. Build and simulation timings are
-written to stderr.
+## Dice sets
 
-Use `./boggle --help` to see all options. The source also builds directly with:
+Each `.cub` file contains one lowercase six-character string per die.
+Each character denotes one equally likely face; `q` represents the
+two-letter tile **Qu**. The dice are placed in uniformly random positions
+on the board. The supplied files are:
 
-```sh
-g++ -std=c++17 -O3 -pthread -Wall -Wextra -o boggle boggle.cpp
-```
+| File | Edition represented | Grid | Dice | Notes |
+| --- | --- | --- | ---: | --- |
+| [`Boggle83.cub`](Boggle83.cub) | Boggle 1983 (classic distribution) | 4×4 | 16 | The original/classic letter assortment, used before the late-1980s redesign. |
+| [`Boggle92.cub`](Boggle92.cub) | Boggle 1992 (revised distribution) | 4×4 | 16 | The redesigned assortment, introduced around 1987 and also used in 1992 editions. |
+| [`Big.cub`](Big.cub) | Big Boggle | 5×5 | 25 | Earlier 25-die distribution; includes a repeated `dhlnor` die. |
+| [`Deluxe.cub`](Deluxe.cub) | Boggle Deluxe | 5×5 | 25 | Later 25-die distribution, differing from `Big.cub` in four dice. |
+| [`Master.cub`](Master.cub) | Boggle Master | 5×5 | 25 | **Identical contents to `Deluxe.cub`**; these produce the same board distribution. |
 
-## Dice and dictionary
+The two 4×4 sets have different letter frequencies and therefore different
+word-occurrence probabilities. The 5×5 Big and Deluxe/Master sets also
+differ: the four Big Boggle dice `ccenst`, `ddhnot`, `dhlnor`
+(one additional copy), and `iprrry` are replaced in Deluxe/Master by
+`ccnstw`, `ddlnor`, `dhhnot`, and `hiprry`, respectively.
 
-* Dice files contain one lowercase six-letter string per die (six equiprobable
-  faces). Exactly 16 or 25 dice are supported, corresponding to 4x4 and 5x5
-  boards. The original repository contains `Boggle83.cub`, `Boggle92.cub`,
-  `Big.cub`, `Deluxe.cub` and `Master.cub`.
-* Word lists have one whitespace-delimited word per entry. Case is ignored,
-  duplicate words are removed, and entries containing nonletters are ignored.
-* A `q` cube represents **Qu**. Words containing a `q` not followed by `u`
-  are excluded. As in the original simulator, words must occupy **at least
-  three dice** (not merely three written characters): for example `qua`
-  occupies two dice and is excluded.
+**Word-length convention:** The simulator requires a word to use at least
+**three physical dice**, for either board size. Standard 5×5 Big Boggle
+rules normally require at least **four written letters**; the program
+does not impose that extra edition-specific restriction. When interpreting
+5×5 output as playable Big Boggle words, omit three-letter entries.
+For example, `qua` uses just two dice (`Qu` and `a`) and is excluded
+by the simulator. Word-length rankings count the written `Qu` as two
+letters. Special-edition challenge/bonus scoring is not simulated.
 
-## Correctness and concurrency
+For descriptions and historical comparisons of the letter distributions,
+see [Bananagrammer's classic-versus-revised dice comparison](https://www.bananagrammer.com/2013/10/the-boggle-cube-redesign-and-its-effect.html)
+and [BoardGameGeek's Big Boggle entry](https://boardgamegeek.com/boardgame/10550/big-boggle).
 
-* The dictionary is an immutable, compact trie shared by all workers. Both
-  terminal words and longer words that extend them can be recognized.
-* The trie is laid out in breadth-first order to improve prefix locality.
-  Child indices and labels are packed into 32-bit edges instead of 8-byte
-  edge records, reducing cache traffic without changing search semantics.
-* Each worker maintains private visited-word stamps and private counts; no
-  dictionary mutations or shared hot counters occur during simulation.
-* The board visit set is a 32-bit local mask; recursive searches neither
-  reuse a cell nor modify shared search state.
-* For each board, a 26-entry array of letter-position masks lets the search
-  iterate actual trie edges and adjacent matching tiles instead of probing
-  every neighbor for a (typically absent) trie child. This improves both
-  single-thread and multi-thread throughput without changing output.
-* Dice are uniformly shuffled with Fisher-Yates and each face is rolled
-  uniformly using rejection sampling. A PCG-style generator gets a unique
-  SplitMix64-derived stream for each **board index**, not each worker.
-* The same `--seed` and `--sims` give identical output regardless of thread
-  count or static work partition. This also makes single- and multi-threaded
-  verification straightforward.
-* The number of simulations is divided deterministically among workers;
-  there is no global atomic counter or scheduling lock on the hot path.
+## Dictionary
 
-## Tests
+The bundled [`words.txt`](words.txt) is based on **TWL06**, the
+**2006 North American Scrabble Tournament Word List** (178,691 words).
+A direct, case-insensitive comparison with an independently published
+TWL06 file confirms that this repository's file contains **178,652
+distinct words**: it is the full TWL06 list except for 39 entries whose
+`q` is not immediately followed by `u`. Three more such entries remain
+in the file but are ignored by the simulator.
+
+After excluding those three entries and 101 entries requiring fewer than
+three Boggle dice, the program loads **178,548 words**, as shown in its
+startup diagnostics. Thus `words.txt` is a *Boggle-adapted TWL06 list*,
+rather than the current Scrabble dictionary or an arbitrary English word
+list. The original source of this repository's copy is not recorded.
+
+The loader also accepts other whitespace-separated word lists:
+case is ignored, repeated words are deduplicated, and entries containing
+nonletters are discarded. Each occurrence probability depends on the chosen
+dictionary as well as the dice set.
+
+For information about TWL06 and other Boggle/Scrabble word lists, see
+[Vanderkam's word-list notes](https://github.com/danvk/hybrid-boggle/blob/main/wordlists/README.md).
+
+## Implementation and performance optimizations
+
+The program retains trie-based depth-first search but reorganizes the
+data and computation for fast single-core and multicore execution:
+
+- **Compact shared trie:** The immutable trie is stored in contiguous
+  breadth-first order, so frequently visited short prefixes have better
+  locality. Nodes hold offsets into an edge array, rather than 26 child
+  pointers each. Each edge packs a 5-bit letter and a child-node index
+  into **32 bits**, reducing memory traffic.
+- **Bitmask search:** A 32-bit mask tracks used board positions (up to 25
+  tiles). Each board has 26 precomputed masks recording the positions of
+  each letter. DFS walks actual outgoing trie edges and intersects their
+  letter masks with adjacent unused positions, instead of probing every
+  neighboring square for a child that usually does not exist.
+- **Independent workers:** Threads share only read-only dice/trie data
+  while searching. Each worker owns its word-frequency counters and
+  per-board word-visit stamps. There are no shared random generators,
+  atomic simulation counters, or locks in the main simulation loop.
+- **Deterministic sampling:** Fisher–Yates shuffles the dice; bounded
+  rejection sampling selects faces without modulo bias. The RNG stream
+  for global board index `i` is initialized with
+  `SplitMix64(seed XOR SplitMix64(i))`, not with a thread-specific seed.
+  Therefore the same `--seed` and `--sims` produce exactly the same
+  board samples and word counts at any thread count. Increasing the
+  simulation count preserves the earlier boards as a prefix.
+- **Efficient aggregation:** Words are counted once per board using
+  private visit stamps; per-worker counts are summed only after all
+  simulations finish. The top-N ranking uses a partial sort in each
+  length group rather than sorting every word by frequency.
+
+The trie and search optimizations improve both single-thread throughput and
+scaling; the independent worker design prevents cross-thread contention.
+
+## Ryzen 9 5950X benchmarks
+
+Measured on an AMD Ryzen 9 5950X (16 physical cores, 32 logical threads)
+using GCC `-O3`, `Boggle83.cub`, **178,548 loaded words**,
+**1,000,000 boards**, and `--seed 42`.
+
+| Workers | Simulation time | Boards/second | Speedup vs. 1 worker |
+| ---: | ---: | ---: | ---: |
+| 1 | 8.924 s | 112,054 | 1.00× |
+| 2 | 4.452 s | 224,627 | 2.00× |
+| 4 | 2.346 s | 426,288 | 3.80× |
+| 8 | 1.220 s | 819,997 | 7.32× |
+| 16 | 0.635 s | 1,575,450 | 14.06× |
+| 32 | **0.435 s** | **2,300,200** | **20.53×** |
+
+The times measure **simulation only**; they exclude loading the
+dictionary (about 0.14 s with this layout) and printing results.
+These are single benchmark runs rather than statistical summaries, so
+small timing differences can vary with system load. At 16 workers,
+parallel efficiency relative to one worker was about **88%**. Using
+both hardware threads per core improved throughput by about **46%**
+over 16 workers. The breadth-first layout and packed edges gave about
+**17–21% greater throughput** than the preceding implementation across
+the tested worker counts.
+
+On the same hardware, 32 workers are therefore worthwhile for long
+simulations, although the best count depends on CPU, memory hierarchy,
+other workloads, and dictionary size. For short runs, dictionary loading
+and thread-startup time can dominate.
+
+## Tests and benchmarking
 
 ```sh
 make test
+python3 tests/benchmark.py ./boggle Boggle83.cub words.txt 50000 42
 ```
 
-Tests include an independent Python reference Boggle solver, comparison of
-exact word counts across different thread counts and board sizes, `Qu`,
-prefix/longer words, duplicate paths, malformed dice, empty dictionaries,
-per-length top-N ranking and alphabetical ties, optional CSV output and errors.
-The test suite verifies complete frequencies through the CSV file, not merely
-the truncated ranking output.
+The test suite includes an independent Python reference implementation,
+4×4 and 5×5 boards, Qu handling, duplicate word paths, different thread
+counts, input validation, top-N sorting and CSV output. The benchmark
+script checks that both the ranking and full CSV frequencies are identical
+across the tested worker counts.
 
-For sanitizers (GCC or Clang):
+For additional memory-safety testing (GCC or Clang):
 
 ```sh
 g++ -std=c++17 -O1 -g -fno-omit-frame-pointer \
-  -fsanitize=address,undefined -pthread -o boggle_san boggle.cpp
+    -fsanitize=address,undefined -pthread -o boggle_san boggle.cpp
 python3 tests/test_boggle.py ./boggle_san
 ```
 
-Optionally benchmark on your own machine (uses existing dice and dictionary):
+## Compatibility with the original simulator
 
-```sh
-python3 tests/benchmark.py ./boggle Boggle83.cub words.txt 50000
-```
-
-The benchmark checks that all thread counts produce identical ranked output
-and complete CSV frequency tables. For
-speedups, use enough boards that initialization and thread-startup overhead
-are negligible. A 16-core machine is best characterized by 1, 2, 4, 8 and
-16 workers. SMT scaling past 16 workers is an additional experiment.
-
-## Single-core performance
-
-The board-search optimization in this revision reduces failed trie lookups.
-On a four-CPU quota environment with a 117k-word dictionary and 100,000
-simulations, median end-to-end runtime dropped from about 3.47 seconds to
-2.04 seconds versus the preceding corrected version; the legacy-style
-baseline ran in about 3.61 seconds. These are hardware-specific measurements,
-not a guarantee for other machines. All tested thread counts produce
-bit-identical output for the fixed seed.
-
-## Ryzen 9 5950X performance (October 2026)
-
-Measured with `Boggle83.cub`, a 178,548-word dictionary, 1,000,000 boards,
-seed 42, and GCC `-O3`. These timings are simulation-only, not end-to-end.
-
-| Workers | Before BFS/packing | After BFS/packing | Throughput gain |
-| ---: | ---: | ---: | ---: |
-| 1 | 10.4272 s | 8.9242 s | 16.8% |
-| 2 | 5.3006 s | 4.4518 s | 19.1% |
-| 4 | 2.7669 s | 2.3458 s | 18.0% |
-| 8 | 1.4628 s | 1.2195 s | 19.9% |
-| 16 | 0.7704 s | 0.6347 s | 21.4% |
-| 32 | 0.5196 s | 0.4347 s | 19.5% |
-
-The optimized implementation reached approximately 2.30 million boards/s
-with 32 workers and 1.58 million boards/s with 16 workers, showing strong SMT
-scaling. Loading the BFS/packed trie took approximately 0.14 seconds versus
-0.11 seconds for the previous version. Actual performance depends on
-CPU, dictionary, dice distribution, and system load.
-
-## Notes on compatibility
-
-This is a replacement for the original `boggle.cpp` rather than a minimal
-line-by-line edit. It preserves the original purpose and input formats but
-changes the default output to per-length top-N rankings, with complete CSV
-frequency output available using `--csv FILE`, and adds explicit options. Running with a fixed seed intentionally
-produces **different random boards** from the original `rand()`/Boost streams.
-This changes individual Monte Carlo estimates, but not the intended sampling
-law. Monte Carlo estimates are not an exact enumeration of all boards.
+The original two-positional-argument invocation still works. This version
+adds explicit simulation, thread, seed, and reporting options, and makes
+the concise per-length ranking the default output. Full counts can be
+saved with `--csv FILE`. Different pseudorandom generators mean that a
+given seed need not reproduce the original program's exact random boards;
+the intended uniform dice-shuffling and face-selection distributions are
+the same. Monte Carlo frequency estimates are not an exact enumeration
+of all boards.
