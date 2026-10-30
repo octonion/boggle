@@ -18,11 +18,29 @@ make
 ./boggle Boggle83.cub words.txt --sims 1000000 --threads 16 --seed 42
 ```
 
-For a build tuned to a Ryzen 9 5950X (Zen 3), use `make clean` followed by
-`make ARCH=znver3`. `ARCH=native` targets the machine doing the compilation.
-Leave `ARCH` unset for the compiler's default instruction-set target; rebuild
-after changing it. The bitmap search benefits from hardware population counts
-when the selected target supports them.
+The Makefile automatically chooses a local, architecture-optimized build.
+On a Xeon Phi (Knights Landing), it uses **`g++-14 -march=knl`**;
+on the Ryzen 9 5950X and other processors it uses the system default
+**`g++ -march=native`**, without pinning an older compiler. GCC 15 and later
+removed support for `-march=knl`, so install `g++-14` on the Xeon Phi
+(`sudo apt install g++-14`). A GCC 14 KNL deprecation warning is expected.
+
+```sh
+make show-config             # Show detected architecture, compiler and flags
+make                         # Automatically chooses compiler and -march
+make ARCH=znver3             # Explicit Ryzen 9 5950X / Zen 3 target
+make ARCH=knl                # Explicit KNL target (automatically uses g++-14)
+make ARCH=portable           # Compiler-default portable instruction set
+make CXX=g++-16 ARCH=native  # Explicit compiler override
+```
+
+`ARCH=auto` is the default. Manual `CXX`, `CXXFLAGS` and `ARCH`
+overrides take precedence; `ARCH=native` always targets the build machine.
+The Makefile tracks the selected compiler version and flags and automatically
+rebuilds `boggle` when these change, so `make clean` is not required when
+switching targets. CPU-specific binaries are not necessarily portable to
+other machines. The bitmap search benefits from hardware population counts
+where the selected target supports them.
 
 The two positional arguments are the **dice file** and **dictionary**.
 The default run uses 100,000 boards, one worker, seed 1, a minimum of three

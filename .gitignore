@@ -3,3 +3,5 @@
 /benchmark_words.txt
 *.o
 __pycache__/
+/.boggle-build-config
+/.boggle-build-config.tmp
