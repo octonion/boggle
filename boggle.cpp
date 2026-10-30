@@ -1,5 +1,6 @@
-// Monte Carlo word-occurrence frequencies for standard Boggle dice.
-// C++17; no external libraries required.
+// Monte Carlo Boggle word frequencies: count each word once per board,
+// regardless of how many paths spell it. C++17; no external libraries.
+// See docs/performance.md for the trie layout and benchmark methodology.
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -104,6 +105,8 @@ Options arguments(int argc, char** argv) {
     return opt;
 }
 
+// Physical dice: each face is a letter ID (0..25). neighbors[s] is a bitmask
+// of squares one king's move from s; 32 bits cover both 4x4 and 5x5 boards.
 struct Dice {
     unsigned side = 0;
     std::vector<std::array<uint8_t, 6>> faces;
@@ -161,10 +164,15 @@ std::string tile_spelling(const std::string& word) {
     return tiles.size() >= 3 ? tiles : "";
 }
 
+// Read-only, breadth-first trie shared by every CPU thread.
+// Each 12-byte node records the first child, a 26-bit child-letter mask,
+// and a terminal counter ID. Children are consecutive and alphabetized:
+// child(letter) = first_child + popcount(mask & ((1 << letter) - 1)).
+// Related compact-trie approach: https://github.com/danvk/jpa-boggle
 struct Trie {
-    // BFS puts each node's children in one contiguous, alphabetically ordered
-    // range. A 26-bit letter mask and its first index replace all explicit edges.
     struct Node { uint32_t first_child, mask, word; };
+    // Temporary dense nodes simplify insertion; converted to compact BFS nodes
+    // once, before simulation. No search-time allocation is needed.
     struct BuildNode {
         std::array<uint32_t, 26> child;
         uint32_t word = no_word;
@@ -172,6 +180,7 @@ struct Trie {
     };
     std::vector<Node> nodes;
     std::array<uint32_t, 26> root{};
+    // Direct lookup for the first two tiles (26 x 26 possibilities).
     std::array<uint32_t, 26 * 26> pairs{};
     std::vector<std::string> words;
     // Alphabetical word index -> BFS terminal index. Only aggregation uses this
@@ -274,6 +283,8 @@ uint64_t splitmix64(uint64_t x) {
     return x ^ (x >> 31);
 }
 
+// PCG-style 32-bit generator. Rejection sampling in uniform(bound) avoids
+// modulo bias in die rolls and the Fisher-Yates shuffle.
 struct Rng {
     uint64_t state;
     explicit Rng(uint64_t seed) : state(seed) {}
@@ -293,11 +304,16 @@ struct Rng {
     }
 };
 
-// All mutable data belongs to exactly one worker, including word-hit markers.
+// One instance per CPU worker thread; cache-line alignment discourages false
+// sharing. All mutable search state is private to this thread.
 struct alignas(64) Worker {
+    // counts is indexed by BFS terminal ID, not alphabetical word order.
+    // seen[id] == epoch means this word was already found on the current board.
+    // The epoch avoids clearing the full array between ordinary boards.
     std::vector<uint64_t> counts;
     std::vector<uint32_t> seen;
     uint32_t epoch = 0;
+    // Letter-type masks for each square's neighborhood on the current board.
     uint32_t neighbor_letters[25]{};
 
     // Inline 32-bit SWAR population count avoids a library call in generic
@@ -338,6 +354,8 @@ struct alignas(64) Worker {
 
     explicit Worker(std::size_t n) : counts(n, 0), seen(n, 0) {}
 
+    // DFS for one known tile prefix. The used bitset forbids revisiting
+    // squares; prefiltered neighbor letters avoid most failed trie lookups.
     void visit(const Trie& trie, const Dice& dice, const uint32_t* letter_positions,
                unsigned square, uint32_t node, uint32_t used) {
         uint32_t word = trie.nodes[node].word;
@@ -367,6 +385,8 @@ struct alignas(64) Worker {
         }
     }
 
+    // Board indices [first, end) are disjoint across workers. Deriving the RNG
+    // state from each global index makes output independent of thread count.
     void run(const Trie& trie, const Dice& dice, uint64_t seed, uint64_t first, uint64_t end) {
         std::array<uint8_t, 25> board{};
         std::array<uint8_t, 25> permutation{};
@@ -468,6 +488,8 @@ int main(int argc, char** argv) {
         workers.reserve(workers_count);
         for (unsigned i = 0; i < workers_count; ++i) workers.emplace_back(trie.words.size());
         auto start = std::chrono::steady_clock::now();
+        // Static ranges need no shared atomic work counter; the main thread
+        // executes worker 0 while the other software threads run concurrently.
         std::vector<std::thread> threads;
         threads.reserve(workers_count > 0 ? workers_count - 1 : 0);
         for (unsigned id = 1; id < workers_count; ++id) {
