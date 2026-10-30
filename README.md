@@ -11,19 +11,35 @@ Requires a C++17 compiler and standard POSIX thread support; no Boost dependency
 
 ```sh
 make
-./boggle Boggle83.cub words.txt --sims 100000 --threads 4 --seed 1 > frequencies.csv
+./boggle Boggle83.cub words.txt --sims 100000 --threads 4 --seed 1 --top 10
+./boggle Boggle83.cub words.txt --sims 100000 --threads 4 --seed 1 --top 20 --csv frequencies.csv
 ```
 
 The original two-argument invocation still works, with defaults of 100,000
-simulations, one worker, and seed 1:
+simulations, one worker, seed 1, and **10 results per word length**:
 
 ```sh
-./boggle Boggle83.cub words.txt > frequencies.csv
+./boggle Boggle83.cub words.txt
 ```
 
-Output is `word,count`, sorted alphabetically; only words with nonzero counts
-are printed. Build and simulation timings are written to stderr. Probability
-estimates are `count / simulations`.
+Standard output groups words by *written spelling length*, shortest to
+longest. Thus `qu` contributes two characters to the word's length even though
+it occupies one Boggle tile. Within each length, words are ranked by descending
+number of boards on which they appear; ties are sorted alphabetically. A length
+with fewer than `--top N` discovered words prints all discovered words of that
+length. Lengths with no discovered words are omitted.
+
+Each ranking row shows the word, integer occurrence count, and estimated
+probability (percentage of all simulated boards). With `--sims 0`, the ranking
+reports that no words were found.
+
+Use **`--csv frequencies.csv`** to additionally write the complete sorted
+`word,frequency` table to disk. It starts with the header `word,frequency`;
+`frequency` is the **integer number of boards containing the word**, not a
+normalized probability. Only nonzero frequencies are included, as in the
+original version's stdout output. Standard output continues to show the
+rankings, even when a CSV file is requested. Build and simulation timings are
+written to stderr.
 
 Use `./boggle --help` to see all options. The source also builds directly with:
 
@@ -76,7 +92,10 @@ make test
 
 Tests include an independent Python reference Boggle solver, comparison of
 exact word counts across different thread counts and board sizes, `Qu`,
-prefix/longer words, duplicate paths, malformed dice, and empty dictionaries.
+prefix/longer words, duplicate paths, malformed dice, empty dictionaries,
+per-length top-N ranking and alphabetical ties, optional CSV output and errors.
+The test suite verifies complete frequencies through the CSV file, not merely
+the truncated ranking output.
 
 For sanitizers (GCC or Clang):
 
@@ -92,7 +111,8 @@ Optionally benchmark on your own machine (uses existing dice and dictionary):
 python3 tests/benchmark.py ./boggle Boggle83.cub words.txt 50000
 ```
 
-The benchmark checks that all thread counts produce identical output. For
+The benchmark checks that all thread counts produce identical ranked output
+and complete CSV frequency tables. For
 speedups, use enough boards that initialization and thread-startup overhead
 are negligible. A 16-core machine is best characterized by 1, 2, 4, 8 and
 16 workers. SMT scaling past 16 workers is an additional experiment.
@@ -131,8 +151,8 @@ CPU, dictionary, dice distribution, and system load.
 
 This is a replacement for the original `boggle.cpp` rather than a minimal
 line-by-line edit. It preserves the original purpose and input formats but
-changes the output to a clean CSV stream, removes thread summary lines from
-stdout, and adds explicit options. Running with a fixed seed intentionally
+changes the default output to per-length top-N rankings, with complete CSV
+frequency output available using `--csv FILE`, and adds explicit options. Running with a fixed seed intentionally
 produces **different random boards** from the original `rand()`/Boost streams.
 This changes individual Monte Carlo estimates, but not the intended sampling
 law. Monte Carlo estimates are not an exact enumeration of all boards.
