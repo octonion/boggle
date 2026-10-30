@@ -232,6 +232,39 @@ class BoggleTests(unittest.TestCase):
         self.assertEqual(no_words.returncode, 0)
         self.assertEqual(no_words.stdout, 'No words found.\n')
 
+    def test_minimum_written_word_length(self):
+        # Qu counts as two written letters but occupies a single physical tile.
+        dice = ['qqqqqq'] * 8 + ['aaaaaa'] * 8
+        cube, dictionary = self.make(dice, ['aaa', 'aaaa', 'quaa', 'quaaa', 'quququ', 'quququa', 'qua'])
+        snapshots = {}
+        for min_length in (3, 4, 5, 6, 99):
+            outputs = []
+            for threads in (1, 4, 8):
+                csv = self.root / 'min.csv'
+                proc = subprocess.run([str(EXE), str(cube), str(dictionary),
+                                       '--sims', '31', '--threads', str(threads), '--seed', '178',
+                                       '--min-length', str(min_length), '--csv', str(csv)],
+                                      capture_output=True, text=True)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                outputs.append((proc.stdout, csv.read_text()))
+            self.assertTrue(all(x == outputs[0] for x in outputs))
+            snapshots[min_length] = outputs[0][1]
+        self.assertEqual(snapshots[3], 'word,frequency\naaa,31\naaaa,31\nquaa,31\nquaaa,31\nquququ,31\nquququa,31\n')
+        self.assertEqual(snapshots[4], 'word,frequency\naaaa,31\nquaa,31\nquaaa,31\nquququ,31\nquququa,31\n')
+        self.assertEqual(snapshots[5], 'word,frequency\nquaaa,31\nquququ,31\nquququa,31\n')
+        self.assertEqual(snapshots[6], 'word,frequency\nquququ,31\nquququa,31\n')
+        self.assertEqual(snapshots[99], 'word,frequency\n')
+        # A minimum below 3 does not override the three-physical-dice rule.
+        proc = subprocess.run([str(EXE), str(cube), str(dictionary),
+                               '--sims', '31', '--min-length', '2'],
+                              capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertNotIn('\n  qua\t', proc.stdout)
+        for invalid in ('0', '-1', '3x'):
+            bad = subprocess.run([str(EXE), str(cube), str(dictionary),
+                                  '--min-length', invalid], capture_output=True, text=True)
+            self.assertNotEqual(bad.returncode, 0)
+
     def test_validation_and_empty_dictionary(self):
         self.invoke(['aaaaaa'] * 15, ['aaa'], 1, 1, success=False)
         self.invoke(['aaaaaa'] * 15 + ['aaaaba!'], ['aaa'], 1, 1, success=False)
