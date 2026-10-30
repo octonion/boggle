@@ -1,311 +1,416 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <iostream>
+// Monte Carlo word-occurrence frequencies for standard Boggle dice.
+// C++17; no external libraries required.
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <exception>
 #include <fstream>
+#include <filesystem>
+#include <iostream>
 #include <iomanip>
+#include <map>
+#include <limits>
+#include <numeric>
+#include <stdexcept>
 #include <string>
+#include <thread>
+#include <utility>
+#include <vector>
 
-#include <atomic>
+namespace {
+constexpr uint32_t absent = std::numeric_limits<uint32_t>::max();
+constexpr uint32_t no_word = absent;
 
-#include <boost/random.hpp>
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
+uint64_t parse_u64(const std::string& s, const char* option) {
+    if (s.empty() || s[0] == '-') throw std::runtime_error(std::string("Invalid ") + option + ": " + s);
+    std::size_t pos = 0;
+    uint64_t result = 0;
+    try { result = std::stoull(s, &pos); }
+    catch (const std::exception&) { throw std::runtime_error(std::string("Invalid ") + option + ": " + s); }
+    if (pos != s.size()) throw std::runtime_error(std::string("Invalid ") + option + ": " + s);
+    return result;
+}
 
-using namespace std;
-
-const int threads=1;
-
-const int rows=4;
-const int columns=4;
-
-const long total_shakes=100000;
-long shakes=0;
-long my_shakes[threads];
-
-const int n_cubes=16;
-const int n_sides=6;
-
-struct node {
-  node *letters[26];
-  string value;
-  int length;
-  unsigned long long int hits;
-  bool unused;
-  bool terminal;
+struct Options {
+    std::string cubes, dictionary;
+    uint64_t simulations = 100000;
+    uint64_t seed = 1;
+    unsigned threads = 1;
+    uint64_t top = 10;
+    std::string csv;
 };
 
-typedef struct arg_struct {
-  node *dawg;
-  int thread;
-}arg_struct_t;
+void usage(std::ostream& out, const char* program) {
+    out << "Usage: " << program
+        << " CUBES.cub WORDS.txt [--sims N] [--threads N] [--seed N] [--top N] [--csv FILE]\n"
+        << "  --sims      Number of randomly shaken boards (default: 100000)\n"
+        << "  --threads   Independent workers (default: 1)\n"
+        << "  --seed      Reproducible random seed (default: 1)\n"
+        << "  --top       Show N most frequent found words of each length (default: 10)\n"
+        << "  --csv       Save all found words and their occurrence counts as word,frequency CSV\n"
+        << "Supports 4x4 (16 dice) and 5x5 (25 dice) boards.\n"
+        << "Each word is counted once per board; rankings use spelling length (Qu = 2 letters).\n";
+}
 
-int cubes[n_cubes][n_sides];
-
-//int rows;
-//int columns;
-
-bool used[threads][rows][columns];
-int grid[threads][rows][columns];
-int total[threads];
-node *found[threads][5000];
-
-std::vector<int> perm[threads];
-boost::random::mt19937 gen;
-boost::random::uniform_int_distribution<> dist(0,5);
-
-//static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void build_dawg(node *dawg, istream *word_file) {
-
-  int i;
-  int thread;
-  int letter;
-  node *current;
-  string word;
-
-  if (*word_file) {
-    while (*word_file >> word) {
-
-      i = 0;
-      current = dawg;
-
-      while (i < word.length()) {
-
-	letter = word[i]-'a';
-
-	current->terminal = false;
-
-	if (current->letters[letter]==NULL) {
-	  node *newnode = new node;
-  	  current->letters[letter] = newnode;
-	  current = current->letters[letter];
-	  current->value = "*";
-	}
-	else {
-	  current = current->letters[letter];
-	}
-
-	if (word[i]=='q' & word[i+1]=='u')
-	  i++;
-
-	i++;
-
-      }
-
-      if (i > rows-2) {
-	current->value = word;  
-	current->length = i;
-
-	for (thread=0; thread<threads; thread++) {
-	  current->hits = 0;
-	  current->unused = true;
-	}
-	current->terminal = true;
-      }
-
-
+Options arguments(int argc, char** argv) {
+    if (argc == 2 && std::string(argv[1]) == "--help") {
+        usage(std::cout, argv[0]);
+        std::exit(0);
     }
-  }
-
-}
-
-void print_dawg(node *current) {
-
-  int i;
-
-  if ((!(current->value == "*")) and (current->hits>0))
-      cout << current->value << "," << current->hits << endl;
-
-  if (!current->terminal) {
-    for (i=0; i < 26; i++) {
-      if (!(current->letters[i]==NULL))
-	print_dawg(current->letters[i]);
+    if (argc < 3) {
+        usage(std::cerr, argv[0]);
+        throw std::runtime_error("Missing cube file or dictionary");
     }
-  }
-
-}
-
-void find_all(node *current, int x, int y, int thread) {
-
-  int dx,dy;
-  int a,b;
-
-  //cout << current->value << endl;
-
-  if (!(current->value=="*") & (current->unused)) {
-
-    current->unused = false;
-    current->hits++;
-    
-    //score_1 = score_1 + scores_1[current->length];
-    //score_2 = score_2 + scores_2[current->length];
-    //score_3 = score_3 + scores_3[current->length];
-    found[thread][total[thread]] = current;
-    total[thread]++;
-  }
-
-  if (current->terminal)
-    return; // void;
-
-  for (dx=-1; dx<=1; dx++) {
-    for (dy=-1; dy<=1; dy++) {
-
-      if ((dx==0) and (dy==0))
-	continue;
-
-      a = x+dx;
-      b = y+dy;
-
-      if ((a<0) or (a>rows-1) or (b<0) or (b>columns-1))
-	continue;
-
-      if (used[thread][a][b])
-	continue;
-
-      if (current->letters[grid[thread][a][b]]==NULL)
-	continue;
-
-      used[thread][a][b] = true;
-      find_all(current->letters[grid[thread][a][b]],a,b,thread);
-      used[thread][a][b] = false;
-
+    Options opt;
+    opt.cubes = argv[1];
+    opt.dictionary = argv[2];
+    for (int i = 3; i < argc; ++i) {
+        std::string key = argv[i];
+        if (i + 1 >= argc) throw std::runtime_error("Missing value for " + key);
+        std::string value = argv[++i];
+        if (key == "--csv") {
+            if (value.empty() || value == "-")
+                throw std::runtime_error("--csv requires a file path, not standard output");
+            opt.csv = value;
+            continue;
+        }
+        if (key != "--sims" && key != "--seed" && key != "--threads" && key != "--top")
+            throw std::runtime_error("Unknown option: " + key);
+        uint64_t n = parse_u64(value, key.c_str());
+        if (key == "--sims") opt.simulations = n;
+        else if (key == "--seed") opt.seed = n;
+        else if (key == "--threads") {
+            if (n == 0 || n > 1024) throw std::runtime_error("--threads must be between 1 and 1024");
+            opt.threads = static_cast<unsigned>(n);
+        } else {
+            if (n == 0) throw std::runtime_error("--top must be positive");
+            opt.top = n;
+        }
     }
-  }
-
+    if (!opt.csv.empty()) {
+        std::error_code ec;
+        if (std::filesystem::equivalent(opt.csv, opt.cubes, ec) ||
+            std::filesystem::equivalent(opt.csv, opt.dictionary, ec))
+            throw std::runtime_error("CSV output must not overwrite the dice or dictionary file");
+    }
+    return opt;
 }
 
-void *sim(void *str) {
+struct Dice {
+    unsigned side = 0;
+    std::vector<std::array<uint8_t, 6>> faces;
+    std::vector<uint32_t> neighbors;
+};
 
-  int i;
-  int j;
-  int k;
-
-  arg_struct_t *local_str = (arg_struct_t *)str;
-  //struct arg_struct *c_arg = arguments;
-
-  node *dawg =  local_str->dawg;
-  int thread =  local_str->thread;
-
-  //cout << thread << ": simming " << shakes << " shakes" << endl;
-
-  my_shakes[thread]=0;
-
-  while (shakes<total_shakes) {
-
-    //cout << thread << ":" << shake << " - shuffle cubes" << endl;
-    std::random_shuffle(perm[thread].begin(),perm[thread].end());
-
-    //cout << thread << ":" << shake << " - roll cubes" << endl;
-    for (i=0; i<rows; i++)
-      for (j=0; j<columns; j++) {
-	//k = dist(gen);
-	//cout << thread << ": " << i << "," << j << endl;
-	//cout << thread << ": " << perm[thread].at(i+4*j) << endl;
-	grid[thread][i][j] = cubes[perm[thread].at(i+4*j)][dist(gen)];
-      }
-
-    //cout << thread << ":" << shake << " - initialize" << endl;
-    for (i=0; i<rows; i++)
-      for (j=0; j<columns; j++)
-	used[thread][i][j] = false;
-
-    total[thread] = 0;
-
-    //cout << thread << ":" << shake << " - find all" << endl;
-    for (i=0; i<rows; i++)
-      for (j=0; j<columns; j++) {
-	used[thread][i][j] = true;
-	find_all(dawg->letters[grid[thread][i][j]],i,j,thread);
-	used[thread][i][j] = false;
-      }
-
-    //cout << thread << ":" << shake << " - reset" << endl;
-    for (i=0; i<total[thread]; i++)
-      found[thread][i]->unused = true;
-
-    my_shakes[thread]++;
-    __sync_fetch_and_add(&shakes,1);
-
-  }
-
-  //cout << thread << ": done simming " << shakes << " shakes" << endl;
-
-  return 0;
-
+Dice load_dice(const std::string& filename) {
+    std::ifstream in(filename);
+    if (!in) throw std::runtime_error("Cannot open cube file: " + filename);
+    Dice dice;
+    std::string cube;
+    while (in >> cube) {
+        if (cube.size() != 6) throw std::runtime_error("Each cube must have exactly six faces: " + cube);
+        std::array<uint8_t, 6> faces{};
+        for (unsigned i = 0; i < 6; ++i) {
+            unsigned char ch = static_cast<unsigned char>(cube[i]);
+            if (ch < 'a' || ch > 'z') throw std::runtime_error("Cube faces must be lowercase a-z: " + cube);
+            faces[i] = static_cast<uint8_t>(ch - 'a');
+        }
+        dice.faces.push_back(faces);
+    }
+    if (dice.faces.size() == 16) dice.side = 4;
+    else if (dice.faces.size() == 25) dice.side = 5;
+    else throw std::runtime_error("Expected exactly 16 or 25 dice, got " + std::to_string(dice.faces.size()));
+    unsigned n = dice.side;
+    dice.neighbors.resize(n * n);
+    for (unsigned r = 0; r < n; ++r) for (unsigned c = 0; c < n; ++c) {
+        uint32_t mask = 0;
+        for (int dr = -1; dr <= 1; ++dr) for (int dc = -1; dc <= 1; ++dc) {
+            int rr = static_cast<int>(r) + dr, cc = static_cast<int>(c) + dc;
+            if ((dr || dc) && rr >= 0 && cc >= 0 && rr < static_cast<int>(n) && cc < static_cast<int>(n))
+                mask |= uint32_t{1} << (rr * static_cast<int>(n) + cc);
+        }
+        dice.neighbors[r * n + c] = mask;
+    }
+    return dice;
 }
 
-int main(int argc, char* argv[]){
+// On a Boggle cube, q denotes Qu.  Reject dictionary entries with bare q.
+// Words need at least three physical cubes, matching the original simulator.
+std::string tile_spelling(const std::string& word) {
+    std::string tiles;
+    for (std::size_t i = 0; i < word.size(); ++i) {
+        unsigned char ch = static_cast<unsigned char>(word[i]);
+        if (ch >= 'A' && ch <= 'Z') ch = static_cast<unsigned char>(ch - 'A' + 'a');
+        if (ch < 'a' || ch > 'z') return "";
+        if (ch == 'q') {
+            if (i + 1 >= word.size()) return "";
+            unsigned char next = static_cast<unsigned char>(word[i + 1]);
+            if (next != 'u' && next != 'U') return "";
+            ++i;
+        }
+        tiles.push_back(static_cast<char>(ch));
+    }
+    return tiles.size() >= 3 ? tiles : "";
+}
 
-  string cube;
-
-  //rows = strtol(argv[1],NULL,10);
-  //columns = strtol(argv[2],NULL,10);
-
-  int i;
-  int j;
-
-  ifstream cube_file;
-  cube_file.open(argv[1]);
-
-  if (cube_file) {
-    i=0;
-    while (cube_file >> cube) {
-      for (j = 0; j < cube.length(); j++)
-	cubes[i][j] = cube[j]-'a';
-
-      //cout << cube << endl;
-      /*for (j = 0; j < cube.length(); j++)
-	cout << cubes[i][j] << ' ';
-	cout << endl;*/
-
-      i++;
+struct Trie {
+    struct Node { uint32_t first_edge, degree, word; };
+    struct Edge { uint32_t packed; };
+    struct BuildNode {
+        std::array<uint32_t, 26> child;
+        uint32_t word = no_word;
+        BuildNode() { child.fill(absent); }
     };
-  }
-  cube_file.close();
+    std::vector<Node> nodes;
+    std::vector<Edge> edges;
+    std::array<uint32_t, 26> root{};
+    std::vector<std::string> words;
 
-  ifstream word_file;
-  word_file.open(argv[2]);
+    explicit Trie(const std::string& filename) {
+        std::ifstream in(filename);
+        if (!in) throw std::runtime_error("Cannot open dictionary: " + filename);
+        std::vector<std::pair<std::string, std::string>> entries;
+        std::string word;
+        while (in >> word) {
+            std::string tiles = tile_spelling(word);
+            if (tiles.empty()) continue;
+            std::transform(word.begin(), word.end(), word.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+            entries.emplace_back(word, std::move(tiles));
+        }
+        std::sort(entries.begin(), entries.end());
+        entries.erase(std::unique(entries.begin(), entries.end(),
+                      [](const auto& a, const auto& b) { return a.first == b.first; }), entries.end());
+        if (entries.size() >= no_word) throw std::runtime_error("Too many dictionary entries");
+        std::vector<BuildNode> build(1); // root
+        for (const auto& entry : entries) {
+            uint32_t v = 0;
+            for (char ch : entry.second) {
+                unsigned c = static_cast<unsigned>(ch - 'a');
+                uint32_t child = build[v].child[c];
+                if (child == absent) {
+                    if (build.size() >= (uint32_t{1} << 27)) throw std::runtime_error("Trie too large");
+                    child = static_cast<uint32_t>(build.size());
+                    build.emplace_back();
+                    build[v].child[c] = child; // after reallocation
+                }
+                v = child;
+            }
+            build[v].word = static_cast<uint32_t>(words.size());
+            words.push_back(entry.first);
+        }
+        // Breadth-first order groups equally short prefixes together.
+        std::vector<uint32_t> order;
+        order.reserve(build.size());
+        order.push_back(0);
+        for (size_t i = 0; i < order.size(); ++i) {
+            const auto &child = build[order[i]].child;
+            for (unsigned c = 0; c < 26; ++c)
+                if (child[c] != absent) order.push_back(child[c]);
+        }
+        std::vector<uint32_t> renum(build.size());
+        for (size_t i = 0; i < order.size(); ++i)
+            renum[order[i]] = static_cast<uint32_t>(i);
+        nodes.reserve(build.size());
+        edges.reserve(build.size() ? build.size() - 1 : 0);
+        for (uint32_t v : order) {
+            const BuildNode& b = build[v];
+            uint32_t first = static_cast<uint32_t>(edges.size());
+            for (unsigned c = 0; c < 26; ++c)
+                if (b.child[c] != absent) edges.push_back({(renum[b.child[c]] << 5) | c});
+            nodes.push_back({first, static_cast<uint32_t>(edges.size()) - first, b.word});
+        }
+        for (int c = 0; c < 26; ++c)
+            root[c] = build[0].child[c] == absent ? absent : renum[build[0].child[c]];
+    }
 
-  node *dawg[threads];
+    // Most trie nodes have very few children; linear scans of compact edges
+    // avoid the cache footprint of a 26-pointer array on every node.
+    uint32_t child(uint32_t node_id, uint8_t letter) const {
+        const Node& n = nodes[node_id];
+        const Edge* begin = edges.data() + n.first_edge;
+        for (uint32_t i = 0; i < n.degree; ++i) {
+            if ((begin[i].packed & 31) == letter) return begin[i].packed >> 5;
+            if ((begin[i].packed & 31) > letter) break;
+        }
+        return absent;
+    }
+};
 
-  int thread;
-  for (thread=0; thread<threads; thread++) {
-    dawg[thread] = new node;
-    dawg[thread]->value = "*";
-    build_dawg(dawg[thread],&word_file);
-    word_file.clear();
-    word_file.seekg(0, ios::beg);
-  }
+// SplitMix64 supplies an independent, deterministic seed per board index.
+uint64_t splitmix64(uint64_t x) {
+    x += UINT64_C(0x9e3779b97f4a7c15);
+    x = (x ^ (x >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)) * UINT64_C(0x94d049bb133111eb);
+    return x ^ (x >> 31);
+}
 
-  word_file.close();
+struct Rng {
+    uint64_t state;
+    explicit Rng(uint64_t seed) : state(seed) {}
+    uint32_t next() {
+        uint64_t old = state;
+        state = old * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+        uint32_t x = static_cast<uint32_t>(((old >> 18u) ^ old) >> 27u);
+        uint32_t rot = static_cast<uint32_t>(old >> 59u);
+        return (x >> rot) | (x << ((0u - rot) & 31u));
+    }
+    uint32_t uniform(uint32_t bound) {
+        uint32_t threshold = (0u - bound) % bound;
+        for (;;) {
+            uint32_t x = next();
+            if (x >= threshold) return x % bound;
+        }
+    }
+};
 
-  pthread_t iThreadId[threads];
-  int iReturnValue[threads];
+// All mutable data belongs to exactly one worker, including word-hit markers.
+struct alignas(64) Worker {
+    std::vector<uint64_t> counts;
+    std::vector<uint32_t> seen;
+    uint32_t epoch = 0;
 
-  arg_struct args[threads];
+    explicit Worker(std::size_t n) : counts(n, 0), seen(n, 0) {}
 
-  for (thread=0; thread<threads; thread++) {
-    for (int i=0; i<n_cubes; ++i)
-      perm[thread].push_back(i);
-  }
+    void visit(const Trie& trie, const Dice& dice, const uint32_t* letter_positions,
+               unsigned square, uint32_t node, uint32_t used) {
+        uint32_t word = trie.nodes[node].word;
+        if (word != no_word && seen[word] != epoch) {
+            seen[word] = epoch;
+            ++counts[word];
+        }
+        uint32_t possible = dice.neighbors[square] & ~used;
+        const Trie::Node& n = trie.nodes[node];
+        const Trie::Edge* edges = trie.edges.data() + n.first_edge;
+        for (uint32_t i = 0; i < n.degree; ++i) {
+            uint32_t matching = possible & letter_positions[edges[i].packed & 31];
+            while (matching) {
+                unsigned next_square = static_cast<unsigned>(__builtin_ctz(matching));
+                matching &= matching - 1;
+                visit(trie, dice, letter_positions, next_square, (edges[i].packed >> 5),
+                      used | (uint32_t{1} << next_square));
+            }
+        }
+    }
 
-  //shakes=0;
+    void run(const Trie& trie, const Dice& dice, uint64_t seed, uint64_t first, uint64_t end) {
+        std::array<uint8_t, 25> board{};
+        std::array<uint8_t, 25> permutation{};
+        unsigned n = static_cast<unsigned>(dice.faces.size());
+        for (uint64_t iteration = first; iteration < end; ++iteration) {
+            if (++epoch == 0) {
+                std::fill(seen.begin(), seen.end(), 0);
+                epoch = 1;
+            }
+            Rng rng(splitmix64(seed ^ splitmix64(iteration)));
+            for (unsigned j = 0; j < n; ++j) permutation[j] = static_cast<uint8_t>(j);
+            for (unsigned j = n - 1; j > 0; --j)
+                std::swap(permutation[j], permutation[rng.uniform(j + 1)]);
+            uint32_t letter_positions[26]{};
+            for (unsigned j = 0; j < n; ++j) {
+                board[j] = dice.faces[permutation[j]][rng.uniform(6)];
+                letter_positions[board[j]] |= uint32_t{1} << j;
+            }
+            for (unsigned j = 0; j < n; ++j) {
+                uint32_t root_child = trie.root[board[j]];
+                if (root_child != absent)
+                    visit(trie, dice, letter_positions, j, root_child, uint32_t{1} << j);
+            }
+        }
+    }
+};
 
-  for (thread=0; thread<threads; thread++) {
-    args[thread].dawg = dawg[thread];
-    //args[thread].shakes = (total_shakes/threads);
-    args[thread].thread = thread;
-    //cout << thread << ": begin" << endl;
-    iReturnValue[thread] = pthread_create(&iThreadId[thread], NULL, &sim, (void *)&args[thread]);
-    //cout << thread << ": end" << endl;
-  }
+// Occurrence counts are exact integers; only found words are reported.
+// Each spelling-length group is ordered by decreasing frequency with
+// alphabetic ties, so results are independent of thread count or platform.
+void report_top(std::ostream& out, const Trie& trie, const std::vector<uint64_t>& totals,
+                uint64_t simulations, uint64_t top) {
+    std::map<std::size_t, std::vector<std::size_t>> by_length;
+    for (std::size_t i = 0; i < totals.size(); ++i)
+        if (totals[i]) by_length[trie.words[i].size()].push_back(i);
+    if (by_length.empty()) {
+        out << "No words found.\n";
+        return;
+    }
+    for (auto& group : by_length) {
+        auto& ids = group.second;
+        auto better = [&](std::size_t a, std::size_t b) {
+            if (totals[a] != totals[b]) return totals[a] > totals[b];
+            return trie.words[a] < trie.words[b];
+        };
+        const auto limit = static_cast<std::size_t>(std::min<uint64_t>(top, ids.size()));
+        std::partial_sort(ids.begin(), ids.begin() + limit, ids.end(), better);
+        out << "Length " << group.first << " (" << ids.size()
+            << (ids.size() == 1 ? " word found):\n" : " words found):\n");
+        for (std::size_t j = 0; j < limit; ++j) {
+            auto i = ids[j];
+            out << "  " << trie.words[i] << "\t" << totals[i] << "\t(";
+            out << std::fixed << std::setprecision(4)
+                << (100.0 * static_cast<double>(totals[i]) / static_cast<double>(simulations))
+                << "%)\n";
+        }
+        out << '\n';
+    }
+}
 
-  for (thread=0; thread<threads; thread++) {
-    pthread_join(iThreadId[thread], NULL);
-    cout << thread << ": " << my_shakes[thread] << endl;
-    print_dawg(dawg[thread]);
-  }
+void save_csv(const std::string& filename, const Trie& trie,
+              const std::vector<uint64_t>& totals) {
+    std::ofstream file(filename, std::ios::out | std::ios::trunc);
+    if (!file) throw std::runtime_error("Cannot open CSV output: " + filename);
+    file << "word,frequency\n";
+    for (std::size_t i = 0; i < totals.size(); ++i)
+        if (totals[i]) file << trie.words[i] << ',' << totals[i] << '\n';
+    file.close();
+    if (!file) throw std::runtime_error("Failed to write CSV output: " + filename);
+}
 
-  return 0;
+} // namespace
 
+int main(int argc, char** argv) {
+    try {
+        Options opt = arguments(argc, argv);
+        auto load_start = std::chrono::steady_clock::now();
+        Dice dice = load_dice(opt.cubes);
+        Trie trie(opt.dictionary);
+        auto load_end = std::chrono::steady_clock::now();
+        unsigned workers_count = static_cast<unsigned>(
+            std::min<uint64_t>(opt.threads, std::max<uint64_t>(opt.simulations, 1)));
+        std::vector<Worker> workers;
+        workers.reserve(workers_count);
+        for (unsigned i = 0; i < workers_count; ++i) workers.emplace_back(trie.words.size());
+        auto start = std::chrono::steady_clock::now();
+        std::vector<std::thread> threads;
+        threads.reserve(workers_count > 0 ? workers_count - 1 : 0);
+        for (unsigned id = 1; id < workers_count; ++id) {
+            uint64_t first = opt.simulations / workers_count * id
+                           + std::min<uint64_t>(id, opt.simulations % workers_count);
+            uint64_t count = opt.simulations / workers_count + (id < opt.simulations % workers_count);
+            threads.emplace_back(&Worker::run, &workers[id], std::cref(trie), std::cref(dice),
+                                 opt.seed, first, first + count);
+        }
+        uint64_t count0 = opt.simulations / workers_count + (0 < opt.simulations % workers_count);
+        workers[0].run(trie, dice, opt.seed, 0, count0);
+        for (auto& t : threads) t.join();
+        auto end = std::chrono::steady_clock::now();
+        std::vector<uint64_t> totals(trie.words.size(), 0);
+        for (const auto& worker : workers)
+            for (std::size_t j = 0; j < totals.size(); ++j) totals[j] += worker.counts[j];
+        report_top(std::cout, trie, totals, opt.simulations, opt.top);
+        if (!opt.csv.empty()) save_csv(opt.csv, trie, totals);
+        double loading = std::chrono::duration<double>(load_end - load_start).count();
+        double simulation = std::chrono::duration<double>(end - start).count();
+        std::cerr << "Dictionary: " << trie.words.size() << " words, " << trie.nodes.size()
+                  << " trie nodes, " << trie.edges.size() << " edges; load " << loading << " s\n"
+                  << "Simulated " << opt.simulations << " boards on " << workers_count << " worker(s)"
+                  << " in " << simulation << " s";
+        if (simulation > 0) std::cerr << " (" << static_cast<double>(opt.simulations) / simulation << " boards/s)";
+        std::cerr << '\n';
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << '\n';
+        return 1;
+    }
 }

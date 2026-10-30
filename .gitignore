@@ -1,0 +1,5 @@
+/boggle
+/boggle_san
+/benchmark_words.txt
+*.o
+__pycache__/
