@@ -237,7 +237,7 @@ struct alignas(64) Worker {
 
     explicit Worker(std::size_t n) : counts(n, 0), seen(n, 0) {}
 
-    void visit(const Trie& trie, const Dice& dice, const uint8_t* board,
+    void visit(const Trie& trie, const Dice& dice, const uint32_t* letter_positions,
                unsigned square, uint32_t node, uint32_t used) {
         uint32_t word = trie.nodes[node].word;
         if (word != no_word && seen[word] != epoch) {
@@ -245,12 +245,16 @@ struct alignas(64) Worker {
             ++counts[word];
         }
         uint32_t possible = dice.neighbors[square] & ~used;
-        while (possible) {
-            unsigned next_square = static_cast<unsigned>(__builtin_ctz(possible));
-            possible &= possible - 1;
-            uint32_t child = trie.child(node, board[next_square]);
-            if (child != absent)
-                visit(trie, dice, board, next_square, child, used | (uint32_t{1} << next_square));
+        const Trie::Node& n = trie.nodes[node];
+        const Trie::Edge* edges = trie.edges.data() + n.first_edge;
+        for (uint32_t i = 0; i < n.degree; ++i) {
+            uint32_t matching = possible & letter_positions[edges[i].letter];
+            while (matching) {
+                unsigned next_square = static_cast<unsigned>(__builtin_ctz(matching));
+                matching &= matching - 1;
+                visit(trie, dice, letter_positions, next_square, edges[i].child,
+                      used | (uint32_t{1} << next_square));
+            }
         }
     }
 
@@ -267,12 +271,15 @@ struct alignas(64) Worker {
             for (unsigned j = 0; j < n; ++j) permutation[j] = static_cast<uint8_t>(j);
             for (unsigned j = n - 1; j > 0; --j)
                 std::swap(permutation[j], permutation[rng.uniform(j + 1)]);
-            for (unsigned j = 0; j < n; ++j)
+            uint32_t letter_positions[26]{};
+            for (unsigned j = 0; j < n; ++j) {
                 board[j] = dice.faces[permutation[j]][rng.uniform(6)];
+                letter_positions[board[j]] |= uint32_t{1} << j;
+            }
             for (unsigned j = 0; j < n; ++j) {
                 uint32_t root_child = trie.root[board[j]];
                 if (root_child != absent)
-                    visit(trie, dice, board.data(), j, root_child, uint32_t{1} << j);
+                    visit(trie, dice, letter_positions, j, root_child, uint32_t{1} << j);
             }
         }
     }
