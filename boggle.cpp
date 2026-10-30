@@ -133,7 +133,7 @@ std::string tile_spelling(const std::string& word) {
 
 struct Trie {
     struct Node { uint32_t first_edge, degree, word; };
-    struct Edge { uint32_t child; uint8_t letter; };
+    struct Edge { uint32_t packed; };
     struct BuildNode {
         std::array<uint32_t, 26> child;
         uint32_t word = no_word;
@@ -168,7 +168,7 @@ struct Trie {
                 unsigned c = static_cast<unsigned>(ch - 'a');
                 uint32_t child = build[v].child[c];
                 if (child == absent) {
-                    if (build.size() >= absent) throw std::runtime_error("Trie too large");
+                    if (build.size() >= (uint32_t{1} << 27)) throw std::runtime_error("Trie too large");
                     child = static_cast<uint32_t>(build.size());
                     build.emplace_back();
                     build[v].child[c] = child; // after reallocation
@@ -178,15 +178,29 @@ struct Trie {
             build[v].word = static_cast<uint32_t>(words.size());
             words.push_back(entry.first);
         }
+        // Breadth-first order groups equally short prefixes together.
+        std::vector<uint32_t> order;
+        order.reserve(build.size());
+        order.push_back(0);
+        for (size_t i = 0; i < order.size(); ++i) {
+            const auto &child = build[order[i]].child;
+            for (unsigned c = 0; c < 26; ++c)
+                if (child[c] != absent) order.push_back(child[c]);
+        }
+        std::vector<uint32_t> renum(build.size());
+        for (size_t i = 0; i < order.size(); ++i)
+            renum[order[i]] = static_cast<uint32_t>(i);
         nodes.reserve(build.size());
         edges.reserve(build.size() ? build.size() - 1 : 0);
-        for (const BuildNode& b : build) {
+        for (uint32_t v : order) {
+            const BuildNode& b = build[v];
             uint32_t first = static_cast<uint32_t>(edges.size());
             for (unsigned c = 0; c < 26; ++c)
-                if (b.child[c] != absent) edges.push_back({b.child[c], static_cast<uint8_t>(c)});
+                if (b.child[c] != absent) edges.push_back({(renum[b.child[c]] << 5) | c});
             nodes.push_back({first, static_cast<uint32_t>(edges.size()) - first, b.word});
         }
-        root = build[0].child;
+        for (int c = 0; c < 26; ++c)
+            root[c] = build[0].child[c] == absent ? absent : renum[build[0].child[c]];
     }
 
     // Most trie nodes have very few children; linear scans of compact edges
@@ -195,8 +209,8 @@ struct Trie {
         const Node& n = nodes[node_id];
         const Edge* begin = edges.data() + n.first_edge;
         for (uint32_t i = 0; i < n.degree; ++i) {
-            if (begin[i].letter == letter) return begin[i].child;
-            if (begin[i].letter > letter) break;
+            if ((begin[i].packed & 31) == letter) return begin[i].packed >> 5;
+            if ((begin[i].packed & 31) > letter) break;
         }
         return absent;
     }
@@ -248,11 +262,11 @@ struct alignas(64) Worker {
         const Trie::Node& n = trie.nodes[node];
         const Trie::Edge* edges = trie.edges.data() + n.first_edge;
         for (uint32_t i = 0; i < n.degree; ++i) {
-            uint32_t matching = possible & letter_positions[edges[i].letter];
+            uint32_t matching = possible & letter_positions[edges[i].packed & 31];
             while (matching) {
                 unsigned next_square = static_cast<unsigned>(__builtin_ctz(matching));
                 matching &= matching - 1;
-                visit(trie, dice, letter_positions, next_square, edges[i].child,
+                visit(trie, dice, letter_positions, next_square, (edges[i].packed >> 5),
                       used | (uint32_t{1} << next_square));
             }
         }

@@ -48,6 +48,9 @@ g++ -std=c++17 -O3 -pthread -Wall -Wextra -o boggle boggle.cpp
 
 * The dictionary is an immutable, compact trie shared by all workers. Both
   terminal words and longer words that extend them can be recognized.
+* The trie is laid out in breadth-first order to improve prefix locality.
+  Child indices and labels are packed into 32-bit edges instead of 8-byte
+  edge records, reducing cache traffic without changing search semantics.
 * Each worker maintains private visited-word stamps and private counts; no
   dictionary mutations or shared hot counters occur during simulation.
 * The board visit set is a 32-bit local mask; recursive searches neither
@@ -103,6 +106,26 @@ simulations, median end-to-end runtime dropped from about 3.47 seconds to
 baseline ran in about 3.61 seconds. These are hardware-specific measurements,
 not a guarantee for other machines. All tested thread counts produce
 bit-identical output for the fixed seed.
+
+## Ryzen 9 5950X performance (October 2026)
+
+Measured with `Boggle83.cub`, a 178,548-word dictionary, 1,000,000 boards,
+seed 42, and GCC `-O3`. These timings are simulation-only, not end-to-end.
+
+| Workers | Before BFS/packing | After BFS/packing | Throughput gain |
+| ---: | ---: | ---: | ---: |
+| 1 | 10.4272 s | 8.9242 s | 16.8% |
+| 2 | 5.3006 s | 4.4518 s | 19.1% |
+| 4 | 2.7669 s | 2.3458 s | 18.0% |
+| 8 | 1.4628 s | 1.2195 s | 19.9% |
+| 16 | 0.7704 s | 0.6347 s | 21.4% |
+| 32 | 0.5196 s | 0.4347 s | 19.5% |
+
+The optimized implementation reached approximately 2.30 million boards/s
+with 32 workers and 1.58 million boards/s with 16 workers, showing strong SMT
+scaling. Loading the BFS/packed trie took approximately 0.14 seconds versus
+0.11 seconds for the previous version. Actual performance depends on
+CPU, dictionary, dice distribution, and system load.
 
 ## Notes on compatibility
 
