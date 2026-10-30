@@ -40,16 +40,18 @@ struct Options {
     uint64_t seed = 1;
     unsigned threads = 1;
     uint64_t top = 10;
+    uint64_t min_length = 3;
     std::string csv;
 };
 
 void usage(std::ostream& out, const char* program) {
     out << "Usage: " << program
-        << " CUBES.cub WORDS.txt [--sims N] [--threads N] [--seed N] [--top N] [--csv FILE]\n"
+        << " CUBES.cub WORDS.txt [--sims N] [--threads N] [--seed N] [--top N] [--min-length N] [--csv FILE]\n"
         << "  --sims      Number of randomly shaken boards (default: 100000)\n"
         << "  --threads   Independent workers (default: 1)\n"
         << "  --seed      Reproducible random seed (default: 1)\n"
         << "  --top       Show N most frequent found words of each length (default: 10)\n"
+        << "  --min-length  Minimum written word length, Qu counts as 2 (default: 3)\n"
         << "  --csv       Save all found words and their occurrence counts as word,frequency CSV\n"
         << "Supports 4x4 (16 dice) and 5x5 (25 dice) boards.\n"
         << "Each word is counted once per board; rankings use spelling length (Qu = 2 letters).\n";
@@ -77,7 +79,7 @@ Options arguments(int argc, char** argv) {
             opt.csv = value;
             continue;
         }
-        if (key != "--sims" && key != "--seed" && key != "--threads" && key != "--top")
+        if (key != "--sims" && key != "--seed" && key != "--threads" && key != "--top" && key != "--min-length")
             throw std::runtime_error("Unknown option: " + key);
         uint64_t n = parse_u64(value, key.c_str());
         if (key == "--sims") opt.simulations = n;
@@ -85,9 +87,12 @@ Options arguments(int argc, char** argv) {
         else if (key == "--threads") {
             if (n == 0 || n > 1024) throw std::runtime_error("--threads must be between 1 and 1024");
             opt.threads = static_cast<unsigned>(n);
-        } else {
+        } else if (key == "--top") {
             if (n == 0) throw std::runtime_error("--top must be positive");
             opt.top = n;
+        } else {
+            if (n == 0) throw std::runtime_error("--min-length must be positive");
+            opt.min_length = n;
         }
     }
     if (!opt.csv.empty()) {
@@ -169,14 +174,14 @@ struct Trie {
     std::array<uint32_t, 26> root{};
     std::vector<std::string> words;
 
-    explicit Trie(const std::string& filename) {
+    explicit Trie(const std::string& filename, uint64_t min_length) {
         std::ifstream in(filename);
         if (!in) throw std::runtime_error("Cannot open dictionary: " + filename);
         std::vector<std::pair<std::string, std::string>> entries;
         std::string word;
         while (in >> word) {
             std::string tiles = tile_spelling(word);
-            if (tiles.empty()) continue;
+            if (tiles.empty() || word.size() < min_length) continue;
             std::transform(word.begin(), word.end(), word.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
@@ -375,7 +380,7 @@ int main(int argc, char** argv) {
         Options opt = arguments(argc, argv);
         auto load_start = std::chrono::steady_clock::now();
         Dice dice = load_dice(opt.cubes);
-        Trie trie(opt.dictionary);
+        Trie trie(opt.dictionary, opt.min_length);
         auto load_end = std::chrono::steady_clock::now();
         unsigned workers_count = static_cast<unsigned>(
             std::min<uint64_t>(opt.threads, std::max<uint64_t>(opt.simulations, 1)));
