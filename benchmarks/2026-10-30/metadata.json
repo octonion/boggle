@@ -1,0 +1,33 @@
+{
+  "base_commit": "5bb776a9973af6294eb9950e87fd267024e835e3",
+  "cpu": "AMD EPYC 9V74, virtualized x86-64 host, eight-CPU cgroup quota",
+  "compiler": "GCC 13.3.0",
+  "generic_flags": "-O3 -std=c++17 -pthread",
+  "targeted_flags": "-O3 -std=c++17 -pthread -march=znver3",
+  "single_worker_affinity": [
+    3
+  ],
+  "four_worker_affinity": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "seed": 42,
+  "minimum_written_length": 3,
+  "dictionary_loaded_words": 178548,
+  "hashes": {
+    "baseline_source": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "candidate_source": "91b54141948c563b1fd66f5d7b8a5ffc20128db18db188af70902064fb5154b5",
+    "baseline_generic": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_generic": "066738b16711e75152af3de440e18aa32293c9be11fe07646268901433d848c0",
+    "baseline_znver3": "16ef0974aee1e881dd36524e30ed1d129b94187f14151d32c350d78f458b159a",
+    "candidate_znver3": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "dictionary": "29e12bc1ed4313d1bea79920ba37fecbbff4f9eb7713befc48019e1ed9bd929f"
+  },
+  "note": "The 4x4 single-worker timing used the pre-comment-cleanup candidate. Its generic and Zen 3 text sections equal the cleaned candidate exactly. 5x5 and four-worker timings use the cleaned source. Timings exclude dictionary loading, counter allocation, aggregation and output.",
+  "candidate_text_sha256": {
+    "generic": "d2f079046de99d91553ea51faaca3dade552f4a2708bd089f370c78f1a46a115",
+    "znver3": "b982ee5edf6012149d154892a70d73e15c85c0f5cf17ed3430a0ef0e8eaefb3a"
+  }
+}

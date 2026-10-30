@@ -265,6 +265,84 @@ class BoggleTests(unittest.TestCase):
                                   '--min-length', invalid], capture_output=True, text=True)
             self.assertNotEqual(bad.returncode, 0)
 
+    def test_sparse_child_ranks_and_neighbor_masks(self):
+        # Sparse alphabet bits include a=0, m=12, q=16 and z=25. A child
+        # remains at its rank in the full trie mask even when lower-letter
+        # siblings are absent from this square's current neighborhood.
+        # Most dice vary between a and m, while a few can roll q/x/y/z;
+        # local letter availability therefore changes on successive boards.
+        tile_words = [a + b + c for a in 'amqz' for b in 'amqz'
+                      for c in 'amqxyz']
+        tile_words += ['aaaam', 'aamm', 'aamz', 'amqz', 'amqza', 'azma',
+                       'mamma', 'mamq', 'mqaz', 'mqaza', 'qaaa', 'qaaaa', 'qmmm', 'qaz', 'qaza',
+                       'qazam', 'qza', 'qzma', 'zaa', 'zaaa', 'zamq',
+                       'zma', 'zmaa', 'zmam', 'zmqz', 'zzaz']
+        words = [w.replace('q', 'qu') for w in tile_words]
+        # Prefix terminals, different lengths and Qu expansion make the
+        # terminal counter's BFS order differ from alphabetic output order.
+        words += ['AAAAM', 'QUAZA', 'qua', 'qam', 'azq', 'am!', 'zz']
+        seeds = (0, 8451)
+        for side in (4, 5):
+            dice = ['amamma', 'mamaam'] * ((side * side - 4) // 2)
+            if len(dice) < side * side - 4:
+                dice.append('ammmma')
+            dice += ['aqqqqm', 'azzzzm', 'amxxyy', 'amqzxy']
+            self.assertEqual(len(dice), side * side)
+            sims = 9
+            for seed in seeds:
+                boards = [board_from_seed(dice, seed, i) for i in range(sims)]
+                # Reuse the independent recursive board oracle, not the C++
+                # mask/rank representation or the old C++ implementation.
+                for minimum in (3, 5):
+                    accepted = {w.lower() for w in words
+                                if len(w) >= minimum and tiles(w)}
+                    reference = collections.Counter()
+                    for board in boards:
+                        for word in accepted:
+                            if exists_on_board(board, word):
+                                reference[word] += 1
+                    self.assertTrue(reference)
+                    self.assertTrue(any(w.startswith('qu') for w in reference))
+                    cube, dictionary = self.make(dice, words)
+                    out = self.root / 'sparse_frequencies.csv'
+                    result = subprocess.run(
+                        [str(EXE), str(cube), str(dictionary),
+                         '--sims', str(sims), '--seed', str(seed),
+                         '--min-length', str(minimum), '--csv', str(out)],
+                        capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    lines = out.read_text().splitlines()
+                    self.assertEqual(lines[0], 'word,frequency')
+                    actual = {w: int(n) for w, n in
+                              (line.split(',') for line in lines[1:])}
+                    with self.subTest(side=side, seed=seed, minimum=minimum):
+                        self.assertEqual(actual, dict(reference))
+                        self.assertEqual(list(actual), sorted(actual))
+
+    def test_no_reuse_with_neighbor_prefilter(self):
+        # The neighborhood mask deliberately includes the already-used start
+        # square. With exactly one q and one z, qu-z-qu and z-qu-z cannot be
+        # legal, even though the second square sees the required letter.
+        # Pair-table starts must therefore initialize BOTH used-cell bits.
+        for side in (4, 5):
+            dice = ['aaaaaa'] * (side * side - 2) + ['qqqqqq', 'zzzzzz']
+            words = ['aaa', 'aaaa', 'quaz', 'quaza', 'zaqu', 'zaqua',
+                     'quzqu', 'zquz', 'quaaqu', 'zaaz', 'quququ', 'zzz']
+            sims, seed = 7, 1907
+            reference = collections.Counter()
+            for i in range(sims):
+                board = board_from_seed(dice, seed, i)
+                for word in words:
+                    if exists_on_board(board, word):
+                        reference[word] += 1
+            self.assertNotIn('quzqu', reference)
+            self.assertNotIn('zquz', reference)
+            self.assertNotIn('quaaqu', reference)
+            self.assertNotIn('zaaz', reference)
+            with self.subTest(side=side):
+                self.assertEqual(self.invoke(dice, words, sims, 1, seed),
+                                 dict(reference))
+
     def test_validation_and_empty_dictionary(self):
         self.invoke(['aaaaaa'] * 15, ['aaa'], 1, 1, success=False)
         self.invoke(['aaaaaa'] * 15 + ['aaaaba!'], ['aaa'], 1, 1, success=False)

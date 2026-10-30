@@ -18,6 +18,12 @@ make
 ./boggle Boggle83.cub words.txt --sims 1000000 --threads 16 --seed 42
 ```
 
+For a build tuned to a Ryzen 9 5950X (Zen 3), use `make clean` followed by
+`make ARCH=znver3`. `ARCH=native` targets the machine doing the compilation.
+Leave `ARCH` unset for the compiler's default instruction-set target; rebuild
+after changing it. The bitmap search benefits from hardware population counts
+when the selected target supports them.
+
 The two positional arguments are the **dice file** and **dictionary**.
 The default run uses 100,000 boards, one worker, seed 1, a minimum of three
 written letters (and three physical dice), and the top 10 found words of each
@@ -146,14 +152,24 @@ data and computation for fast single-core and multicore execution:
 
 - **Compact shared trie:** The immutable trie is stored in contiguous
   breadth-first order, so frequently visited short prefixes have better
-  locality. Nodes hold offsets into an edge array, rather than 26 child
-  pointers each. Each edge packs a 5-bit letter and a child-node index
-  into **32 bits**, reducing memory traffic.
+  locality. A node's alphabetically ordered children are consecutive, so a
+  **12-byte node** needs only the first child index, a 26-bit child-letter
+  mask, and a terminal counter ID. The rank of a letter in the mask identifies
+  its child; no separate edge array is needed.
 - **Bitmask search:** A 32-bit mask tracks used board positions (up to 25
   tiles). Each board has 26 precomputed masks recording the positions of
-  each letter. DFS walks actual outgoing trie edges and intersects their
-  letter masks with adjacent unused positions, instead of probing every
-  neighboring square for a child that usually does not exist.
+  each letter. Each square also has a mask of the letter types present in
+  its neighborhood. DFS first intersects that mask with the node's child
+  letters, then checks matching unused positions. Child ranks are calculated
+  only after an unused matching square is found. Fixed 4×4 and 5×5 geometry
+  specializes neighborhood-mask construction into direct bitwise operations.
+- **Fast search entry:** A 26×26 lookup table starts searches after the first
+  two neighboring tiles. This is valid because every accepted word uses at
+  least three physical dice, including words with Qu.
+- **Nearby word counters:** Terminal IDs follow breadth-first order, grouping
+  the frequently encountered short words together in each worker's counters
+  and visit stamps. Final aggregation maps those IDs back to alphabetical
+  word order for the existing reports.
 - **Independent workers:** Threads share only read-only dice/trie data
   while searching. Each worker owns its word-frequency counters and
   per-board word-visit stamps. There are no shared random generators,
@@ -173,7 +189,23 @@ data and computation for fast single-core and multicore execution:
 The trie and search optimizations improve both single-thread throughput and
 scaling; the independent worker design prevents cross-thread contention.
 
-## Ryzen 9 5950X benchmarks
+For the bundled dictionary, the node array occupies **4,738,104 bytes**, versus
+**6,317,468 bytes** for the previous nodes and packed edges. The cold counter-ID
+mapping and pair table add 714,192 and 2,704 bytes respectively. Thus the hot
+trie arrays shrink by 25%, and retained indexing arrays including the added
+mapping shrink by approximately 13.6%. Per-worker counter sizes are unchanged.
+
+The [October 2026 performance investigation](benchmarks/2026-10-30/README.md)
+records controlled comparisons with the preceding implementation, rejected
+experiments, correctness checks, and relevant sources.
+
+## Ryzen 9 5950X reference benchmarks
+
+These measurements use the **preceding breadth-first, packed-edge layout**
+preserved at commit `5bb776a`, before the additional bitmap and counter-locality work
+described above. They remain a workstation reference; the new layout's
+controlled measurements are in the linked investigation and use a different
+AMD host.
 
 Measured on an AMD Ryzen 9 5950X (16 physical cores, 32 logical threads)
 using GCC `-O3`, `Boggle83.cub`, **178,548 loaded words**,
@@ -215,6 +247,19 @@ The test suite includes an independent Python reference implementation,
 counts, input validation, top-N sorting and CSV output. The benchmark
 script checks that both the ranking and full CSV frequencies are identical
 across the tested worker counts.
+
+To compare two compiled versions, interleave repeated runs and check their
+complete CSVs as well as console rankings:
+
+```sh
+python3 tests/compare_versions.py /path/to/baseline ./boggle \
+    Boggle83.cub words.txt --sims 1000000 --threads 1,16,32 \
+    --repeat 3 --json comparison.json
+```
+
+This reports median simulation times and throughput ratios, and saves raw
+timings plus input/output hashes when `--json` is supplied. Use the same
+compiler flags for both versions to isolate the source changes.
 
 For additional memory-safety testing (GCC or Clang):
 

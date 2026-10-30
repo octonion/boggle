@@ -1,0 +1,105 @@
+{
+  "baseline": "5bb776a9973af6294eb9950e87fd267024e835e3",
+  "dice": "Boggle83.cub",
+  "simulations": 20000,
+  "seed": 42,
+  "workers": 1,
+  "rows": [
+    {
+      "tile_depth": 1,
+      "visits": 320000,
+      "edge_scans": 4854241,
+      "productive_edges": 1015966,
+      "terminal_hits": 0,
+      "first_hits": 0
+    },
+    {
+      "tile_depth": 2,
+      "visits": 1144463,
+      "edge_scans": 13253586,
+      "productive_edges": 2617123,
+      "terminal_hits": 0,
+      "first_hits": 0
+    },
+    {
+      "tile_depth": 3,
+      "visits": 2920294,
+      "edge_scans": 14829129,
+      "productive_edges": 2908651,
+      "terminal_hits": 1007921,
+      "first_hits": 725221
+    },
+    {
+      "tile_depth": 4,
+      "visits": 3238740,
+      "edge_scans": 7939958,
+      "productive_edges": 1492575,
+      "terminal_hits": 959042,
+      "first_hits": 685541
+    },
+    {
+      "tile_depth": 5,
+      "visits": 1650027,
+      "edge_scans": 2581595,
+      "productive_edges": 442187,
+      "terminal_hits": 440573,
+      "first_hits": 316452
+    },
+    {
+      "tile_depth": 6,
+      "visits": 483077,
+      "edge_scans": 599934,
+      "productive_edges": 92913,
+      "terminal_hits": 154508,
+      "first_hits": 110811
+    },
+    {
+      "tile_depth": 7,
+      "visits": 100134,
+      "edge_scans": 103024,
+      "productive_edges": 14103,
+      "terminal_hits": 38102,
+      "first_hits": 27733
+    },
+    {
+      "tile_depth": 8,
+      "visits": 15073,
+      "edge_scans": 13190,
+      "productive_edges": 1654,
+      "terminal_hits": 7069,
+      "first_hits": 5068
+    },
+    {
+      "tile_depth": 9,
+      "visits": 1750,
+      "edge_scans": 1438,
+      "productive_edges": 146,
+      "terminal_hits": 905,
+      "first_hits": 667
+    },
+    {
+      "tile_depth": 10,
+      "visits": 151,
+      "edge_scans": 115,
+      "productive_edges": 10,
+      "terminal_hits": 79,
+      "first_hits": 58
+    },
+    {
+      "tile_depth": 11,
+      "visits": 11,
+      "edge_scans": 11,
+      "productive_edges": 2,
+      "terminal_hits": 3,
+      "first_hits": 3
+    },
+    {
+      "tile_depth": 12,
+      "visits": 2,
+      "edge_scans": 2,
+      "productive_edges": 0,
+      "terminal_hits": 0,
+      "first_hits": 0
+    }
+  ]
+}

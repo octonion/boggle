@@ -1,0 +1,110 @@
+[
+  {
+    "name": "neighbor_swar",
+    "rep": 0,
+    "seconds": 0.497867,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_unroll",
+    "rep": 0,
+    "seconds": 0.527421,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "baseline_znver3",
+    "rep": 0,
+    "seconds": 0.712061,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbormask_bfswords_znver3",
+    "rep": 0,
+    "seconds": 0.460416,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_late",
+    "rep": 0,
+    "seconds": 0.49014,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbormask_bfswords",
+    "rep": 0,
+    "seconds": 0.513932,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "baseline",
+    "rep": 0,
+    "seconds": 0.670201,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_swar_znver3",
+    "rep": 0,
+    "seconds": 0.412072,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_unroll_znver3",
+    "rep": 0,
+    "seconds": 0.43839,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_unroll",
+    "rep": 1,
+    "seconds": 0.482534,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_unroll_znver3",
+    "rep": 1,
+    "seconds": 0.421749,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_swar",
+    "rep": 1,
+    "seconds": 0.493724,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_late",
+    "rep": 1,
+    "seconds": 0.44835,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbormask_bfswords_znver3",
+    "rep": 1,
+    "seconds": 0.422105,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "baseline",
+    "rep": 1,
+    "seconds": 0.679895,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbor_swar_znver3",
+    "rep": 1,
+    "seconds": 0.403236,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "baseline_znver3",
+    "rep": 1,
+    "seconds": 0.672501,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  },
+  {
+    "name": "neighbormask_bfswords",
+    "rep": 1,
+    "seconds": 0.487016,
+    "hash": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3"
+  }
+]

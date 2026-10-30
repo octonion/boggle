@@ -1,0 +1,22 @@
+[
+  {
+    "dice": "Boggle83.cub",
+    "diagnostic": "Dictionary: 177677 words, 392872 trie nodes, 392871 edges; load 0.282589 s\nSimulated 0 boards on 1 worker(s) in 3.51e-07 s (0 boards/s)\n"
+  },
+  {
+    "dice": "Boggle92.cub",
+    "diagnostic": "Dictionary: 168801 words, 371901 trie nodes, 371900 edges; load 0.288719 s\nSimulated 0 boards on 1 worker(s) in 2.11e-07 s (0 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "diagnostic": "Dictionary: 169512 words, 374184 trie nodes, 374183 edges; load 0.288864 s\nSimulated 0 boards on 1 worker(s) in 2.21e-07 s (0 boards/s)\n"
+  },
+  {
+    "dice": "Deluxe.cub",
+    "diagnostic": "Dictionary: 169535 words, 374235 trie nodes, 374234 edges; load 0.312919 s\nSimulated 0 boards on 1 worker(s) in 2e-07 s (0 boards/s)\n"
+  },
+  {
+    "dice": "Master.cub",
+    "diagnostic": "Dictionary: 169535 words, 374235 trie nodes, 374234 edges; load 0.33961 s\nSimulated 0 boards on 1 worker(s) in 2.21e-07 s (0 boards/s)\n"
+  }
+]

@@ -1,0 +1,272 @@
+[
+  {
+    "dice": "Boggle83.cub",
+    "variant": "exhaustion",
+    "rep": 0,
+    "seconds": 1.02722,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.152465 s\nSimulated 50000 boards on 1 worker(s) in 1.02722 s (48674.9 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "matching",
+    "rep": 0,
+    "seconds": 0.748164,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 177677 words, 392872 trie nodes, 392871 edges; load 0.248983 s\nSimulated 50000 boards on 1 worker(s) in 0.748164 s (66830.3 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "baseline",
+    "rep": 0,
+    "seconds": 0.772531,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.19744 s\nSimulated 50000 boards on 1 worker(s) in 0.772531 s (64722.4 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "greedy",
+    "rep": 0,
+    "seconds": 0.786906,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 3249 reversals\nOrientation sweep 1: 3396 reversals\nOrientation sweep 2: 839 reversals\nDictionary: 178548 words, 387244 trie nodes, 387243 edges; load 1.47763 s\nSimulated 50000 boards on 1 worker(s) in 0.786906 s (63540 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "tagleaf",
+    "rep": 0,
+    "seconds": 0.655286,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.163374 s\nSimulated 50000 boards on 1 worker(s) in 0.655286 s (76302.5 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "baseline",
+    "rep": 1,
+    "seconds": 0.638035,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.161399 s\nSimulated 50000 boards on 1 worker(s) in 0.638035 s (78365.6 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "matching",
+    "rep": 1,
+    "seconds": 0.754365,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 177677 words, 392872 trie nodes, 392871 edges; load 0.232098 s\nSimulated 50000 boards on 1 worker(s) in 0.754365 s (66280.9 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "exhaustion",
+    "rep": 1,
+    "seconds": 0.911652,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.153081 s\nSimulated 50000 boards on 1 worker(s) in 0.911652 s (54845.5 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "tagleaf",
+    "rep": 1,
+    "seconds": 0.688243,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.158163 s\nSimulated 50000 boards on 1 worker(s) in 0.688243 s (72648.7 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "greedy",
+    "rep": 1,
+    "seconds": 0.71556,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 3249 reversals\nOrientation sweep 1: 3396 reversals\nOrientation sweep 2: 839 reversals\nDictionary: 178548 words, 387244 trie nodes, 387243 edges; load 1.59659 s\nSimulated 50000 boards on 1 worker(s) in 0.71556 s (69875.3 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "baseline",
+    "rep": 2,
+    "seconds": 0.773647,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.174998 s\nSimulated 50000 boards on 1 worker(s) in 0.773647 s (64629 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "greedy",
+    "rep": 2,
+    "seconds": 1.01297,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 3249 reversals\nOrientation sweep 1: 3396 reversals\nOrientation sweep 2: 839 reversals\nDictionary: 178548 words, 387244 trie nodes, 387243 edges; load 1.73234 s\nSimulated 50000 boards on 1 worker(s) in 1.01297 s (49359.9 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "tagleaf",
+    "rep": 2,
+    "seconds": 0.792793,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.235797 s\nSimulated 50000 boards on 1 worker(s) in 0.792793 s (63068.1 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "exhaustion",
+    "rep": 2,
+    "seconds": 1.30481,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.224675 s\nSimulated 50000 boards on 1 worker(s) in 1.30481 s (38319.7 boards/s)\n"
+  },
+  {
+    "dice": "Boggle83.cub",
+    "variant": "matching",
+    "rep": 2,
+    "seconds": 0.879569,
+    "csv_sha256": "1800b8fcc81d435801fc9a16977adde5f764631c8c32d0b7286c8cf76c97f1c3",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 177677 words, 392872 trie nodes, 392871 edges; load 0.243743 s\nSimulated 50000 boards on 1 worker(s) in 0.879569 s (56846 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "tagleaf",
+    "rep": 0,
+    "seconds": 1.99225,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.186215 s\nSimulated 50000 boards on 1 worker(s) in 1.99225 s (25097.3 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "baseline",
+    "rep": 0,
+    "seconds": 2.64368,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.192805 s\nSimulated 50000 boards on 1 worker(s) in 2.64368 s (18913 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "matching",
+    "rep": 0,
+    "seconds": 2.15873,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 169512 words, 374184 trie nodes, 374183 edges; load 0.268976 s\nSimulated 50000 boards on 1 worker(s) in 2.15873 s (23161.8 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "greedy",
+    "rep": 0,
+    "seconds": 2.01147,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 4388 reversals\nOrientation sweep 1: 3639 reversals\nOrientation sweep 2: 667 reversals\nDictionary: 178548 words, 387707 trie nodes, 387706 edges; load 1.75907 s\nSimulated 50000 boards on 1 worker(s) in 2.01147 s (24857.4 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "exhaustion",
+    "rep": 0,
+    "seconds": 2.60841,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.152823 s\nSimulated 50000 boards on 1 worker(s) in 2.60841 s (19168.8 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "matching",
+    "rep": 1,
+    "seconds": 2.07433,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 169512 words, 374184 trie nodes, 374183 edges; load 0.228922 s\nSimulated 50000 boards on 1 worker(s) in 2.07433 s (24104.2 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "baseline",
+    "rep": 1,
+    "seconds": 2.0094,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.173595 s\nSimulated 50000 boards on 1 worker(s) in 2.0094 s (24883 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "greedy",
+    "rep": 1,
+    "seconds": 2.03565,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 4388 reversals\nOrientation sweep 1: 3639 reversals\nOrientation sweep 2: 667 reversals\nDictionary: 178548 words, 387707 trie nodes, 387706 edges; load 1.49294 s\nSimulated 50000 boards on 1 worker(s) in 2.03565 s (24562.2 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "exhaustion",
+    "rep": 1,
+    "seconds": 2.62848,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.155952 s\nSimulated 50000 boards on 1 worker(s) in 2.62848 s (19022.4 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "tagleaf",
+    "rep": 1,
+    "seconds": 2.07251,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.221147 s\nSimulated 50000 boards on 1 worker(s) in 2.07251 s (24125.4 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "exhaustion",
+    "rep": 2,
+    "seconds": 2.69739,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "8ba45f1aa41a93a8db06ba70bef8ca048a2032728b8a63e277e9f4bfe362688e",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.168043 s\nSimulated 50000 boards on 1 worker(s) in 2.69739 s (18536.4 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "greedy",
+    "rep": 2,
+    "seconds": 2.22769,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "29e30f6e1671c571632975b12ccdfb275da3c3c875f8918c35d1c32dfee1689b",
+    "stderr": "Orientation sweep 0: 4388 reversals\nOrientation sweep 1: 3639 reversals\nOrientation sweep 2: 667 reversals\nDictionary: 178548 words, 387707 trie nodes, 387706 edges; load 1.7563 s\nSimulated 50000 boards on 1 worker(s) in 2.22769 s (22444.8 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "matching",
+    "rep": 2,
+    "seconds": 2.44048,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "008b881b6d532a3f1010f510d1241fdc6b3d8f8425b50fc6561d2b12b0429ae0",
+    "stderr": "Dictionary: 169512 words, 374184 trie nodes, 374183 edges; load 0.216418 s\nSimulated 50000 boards on 1 worker(s) in 2.44048 s (20487.7 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "baseline",
+    "rep": 2,
+    "seconds": 2.04045,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "b2dd3b969caa81cbefca63846e4dfc7554a998c06d26d3a3e373ea06b53a3e85",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.151702 s\nSimulated 50000 boards on 1 worker(s) in 2.04045 s (24504.4 boards/s)\n"
+  },
+  {
+    "dice": "Big.cub",
+    "variant": "tagleaf",
+    "rep": 2,
+    "seconds": 2.16668,
+    "csv_sha256": "42254e373e31fa243f4b7c0c8efeaa94d7c617bac1472e5c85b41d055086d8ce",
+    "source_sha256": "cf92c2c2f05d8bf023f100842ac2b4a7cdeef7ea0bca0579495967a30d3f8251",
+    "stderr": "Dictionary: 178548 words, 394842 trie nodes, 394841 edges; load 0.207077 s\nSimulated 50000 boards on 1 worker(s) in 2.16668 s (23076.8 boards/s)\n"
+  }
+]
