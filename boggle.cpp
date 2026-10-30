@@ -8,7 +8,10 @@
 #include <cstdlib>
 #include <exception>
 #include <fstream>
+#include <filesystem>
 #include <iostream>
+#include <iomanip>
+#include <map>
 #include <limits>
 #include <numeric>
 #include <stdexcept>
@@ -36,16 +39,20 @@ struct Options {
     uint64_t simulations = 100000;
     uint64_t seed = 1;
     unsigned threads = 1;
+    uint64_t top = 10;
+    std::string csv;
 };
 
 void usage(std::ostream& out, const char* program) {
     out << "Usage: " << program
-        << " CUBES.cub WORDS.txt [--sims N] [--threads N] [--seed N]\n"
+        << " CUBES.cub WORDS.txt [--sims N] [--threads N] [--seed N] [--top N] [--csv FILE]\n"
         << "  --sims      Number of randomly shaken boards (default: 100000)\n"
         << "  --threads   Independent workers (default: 1)\n"
         << "  --seed      Reproducible random seed (default: 1)\n"
+        << "  --top       Show N most frequent found words of each length (default: 10)\n"
+        << "  --csv       Save all found words and their occurrence counts as word,frequency CSV\n"
         << "Supports 4x4 (16 dice) and 5x5 (25 dice) boards.\n"
-        << "Each word is counted once per board; output: word,count.\n";
+        << "Each word is counted once per board; rankings use spelling length (Qu = 2 letters).\n";
 }
 
 Options arguments(int argc, char** argv) {
@@ -63,13 +70,31 @@ Options arguments(int argc, char** argv) {
     for (int i = 3; i < argc; ++i) {
         std::string key = argv[i];
         if (i + 1 >= argc) throw std::runtime_error("Missing value for " + key);
-        uint64_t n = parse_u64(argv[++i], key.c_str());
+        std::string value = argv[++i];
+        if (key == "--csv") {
+            if (value.empty() || value == "-")
+                throw std::runtime_error("--csv requires a file path, not standard output");
+            opt.csv = value;
+            continue;
+        }
+        if (key != "--sims" && key != "--seed" && key != "--threads" && key != "--top")
+            throw std::runtime_error("Unknown option: " + key);
+        uint64_t n = parse_u64(value, key.c_str());
         if (key == "--sims") opt.simulations = n;
         else if (key == "--seed") opt.seed = n;
         else if (key == "--threads") {
             if (n == 0 || n > 1024) throw std::runtime_error("--threads must be between 1 and 1024");
             opt.threads = static_cast<unsigned>(n);
-        } else throw std::runtime_error("Unknown option: " + key);
+        } else {
+            if (n == 0) throw std::runtime_error("--top must be positive");
+            opt.top = n;
+        }
+    }
+    if (!opt.csv.empty()) {
+        std::error_code ec;
+        if (std::filesystem::equivalent(opt.csv, opt.cubes, ec) ||
+            std::filesystem::equivalent(opt.csv, opt.dictionary, ec))
+            throw std::runtime_error("CSV output must not overwrite the dice or dictionary file");
     }
     return opt;
 }
@@ -299,6 +324,50 @@ struct alignas(64) Worker {
     }
 };
 
+// Occurrence counts are exact integers; only found words are reported.
+// Each spelling-length group is ordered by decreasing frequency with
+// alphabetic ties, so results are independent of thread count or platform.
+void report_top(std::ostream& out, const Trie& trie, const std::vector<uint64_t>& totals,
+                uint64_t simulations, uint64_t top) {
+    std::map<std::size_t, std::vector<std::size_t>> by_length;
+    for (std::size_t i = 0; i < totals.size(); ++i)
+        if (totals[i]) by_length[trie.words[i].size()].push_back(i);
+    if (by_length.empty()) {
+        out << "No words found.\n";
+        return;
+    }
+    for (auto& group : by_length) {
+        auto& ids = group.second;
+        auto better = [&](std::size_t a, std::size_t b) {
+            if (totals[a] != totals[b]) return totals[a] > totals[b];
+            return trie.words[a] < trie.words[b];
+        };
+        const auto limit = static_cast<std::size_t>(std::min<uint64_t>(top, ids.size()));
+        std::partial_sort(ids.begin(), ids.begin() + limit, ids.end(), better);
+        out << "Length " << group.first << " (" << ids.size()
+            << (ids.size() == 1 ? " word found):\n" : " words found):\n");
+        for (std::size_t j = 0; j < limit; ++j) {
+            auto i = ids[j];
+            out << "  " << trie.words[i] << "\t" << totals[i] << "\t(";
+            out << std::fixed << std::setprecision(4)
+                << (100.0 * static_cast<double>(totals[i]) / static_cast<double>(simulations))
+                << "%)\n";
+        }
+        out << '\n';
+    }
+}
+
+void save_csv(const std::string& filename, const Trie& trie,
+              const std::vector<uint64_t>& totals) {
+    std::ofstream file(filename, std::ios::out | std::ios::trunc);
+    if (!file) throw std::runtime_error("Cannot open CSV output: " + filename);
+    file << "word,frequency\n";
+    for (std::size_t i = 0; i < totals.size(); ++i)
+        if (totals[i]) file << trie.words[i] << ',' << totals[i] << '\n';
+    file.close();
+    if (!file) throw std::runtime_error("Failed to write CSV output: " + filename);
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -330,8 +399,8 @@ int main(int argc, char** argv) {
         std::vector<uint64_t> totals(trie.words.size(), 0);
         for (const auto& worker : workers)
             for (std::size_t j = 0; j < totals.size(); ++j) totals[j] += worker.counts[j];
-        for (std::size_t i = 0; i < totals.size(); ++i)
-            if (totals[i]) std::cout << trie.words[i] << ',' << totals[i] << '\n';
+        report_top(std::cout, trie, totals, opt.simulations, opt.top);
+        if (!opt.csv.empty()) save_csv(opt.csv, trie, totals);
         double loading = std::chrono::duration<double>(load_end - load_start).count();
         double simulation = std::chrono::duration<double>(end - start).count();
         std::cerr << "Dictionary: " << trie.words.size() << " words, " << trie.nodes.size()
