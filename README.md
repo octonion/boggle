@@ -19,8 +19,9 @@ make
 ```
 
 The two positional arguments are the **dice file** and **dictionary**.
-The default run uses 100,000 boards, one worker, seed 1, and the top 10
-found words of each spelling length.
+The default run uses 100,000 boards, one worker, seed 1, a minimum of three
+written letters (and three physical dice), and the top 10 found words of each
+spelling length.
 
 | Option | Meaning | Default |
 | --- | --- | --- |
@@ -28,6 +29,7 @@ found words of each spelling length.
 | `--threads N` | Number of workers | `1` |
 | `--seed N` | Reproducible 64-bit random seed | `1` |
 | `--top N` | Maximum displayed words per spelling length | `10` |
+| `--min-length N` | Minimum written word length (Qu counts as two letters) | `3` |
 | `--csv FILE` | Additionally save complete `word,frequency` data | None |
 
 For example, to display up to 20 words of each length and retain all
@@ -37,6 +39,12 @@ nonzero frequencies:
 ./boggle Boggle83.cub words.txt --sims 1000000 --threads 32 \
     --seed 42 --top 20 --csv frequencies.csv
 ```
+
+To use the traditional Big Boggle minimum of four written letters, run
+`./boggle Big.cub words.txt --min-length 4`. The limit filters the dictionary
+**before** trie construction, not during board search; thus it adds no work to
+each simulated board and can slightly reduce search cost. Independently of
+this option, a legal word must still occupy at least three physical dice.
 
 Standard output lists lengths from shortest to longest, and within each
 length displays words in descending order of the number of boards on which
@@ -51,39 +59,55 @@ containing the word**, not its percentage; only positive counts are
 included. The top-N summary still goes to stdout. Dictionary-loading
 and simulation timings go to stderr. Use `./boggle --help` for help.
 
-## Dice sets
+## Dice sets and edition history
 
-Each `.cub` file contains one lowercase six-character string per die.
-Each character denotes one equally likely face; `q` represents the
-two-letter tile **Qu**. The dice are placed in uniformly random positions
-on the board. The supplied files are:
+Each `.cub` file contains one lowercase six-character string per die;
+each character denotes an equally likely face. `q` represents the
+two-letter tile **Qu**. The original filenames are retained because the
+same names were recorded in a [2004 Boggle-programming archive](https://www.gtoal.com/wordgames/boggle.html),
+which explicitly credits **Chris Long** with supplying all five exact cube
+lists. Thus `Boggle83.cub` and `Boggle92.cub` are *edition labels*, not
+necessarily the introduction years of their letter distributions.
 
-| File | Edition represented | Grid | Dice | Notes |
-| --- | --- | --- | ---: | --- |
-| [`Boggle83.cub`](Boggle83.cub) | Boggle 1983 (classic distribution) | 4×4 | 16 | The original/classic letter assortment, used before the late-1980s redesign. |
-| [`Boggle92.cub`](Boggle92.cub) | Boggle 1992 (revised distribution) | 4×4 | 16 | The redesigned assortment, introduced around 1987 and also used in 1992 editions. |
-| [`Big.cub`](Big.cub) | Big Boggle | 5×5 | 25 | Earlier 25-die distribution; includes a repeated `dhlnor` die. |
-| [`Deluxe.cub`](Deluxe.cub) | Boggle Deluxe | 5×5 | 25 | Later 25-die distribution, differing from `Big.cub` in four dice. |
-| [`Master.cub`](Master.cub) | Boggle Master | 5×5 | 25 | **Identical contents to `Deluxe.cub`**; these produce the same board distribution. |
+| File | Associated game / evidence for date | Grid | Dice |
+| --- | --- | --- | ---: |
+| [`Boggle83.cub`](Boggle83.cub) | **Classic Boggle**: used in the late 1970s and the documented **1983** edition | 4×4 | 16 |
+| [`Boggle92.cub`](Boggle92.cub) | **Revised Boggle**: new distribution documented from **1987**, including **1992** editions | 4×4 | 16 |
+| [`Big.cub`](Big.cub) | **Big Boggle**: product introduced **1979**, with this original-style 25-die list documented in the 2004 archive | 5×5 | 25 |
+| [`Master.cub`](Master.cub) | **Boggle Master**: documented **1993** Parker Brothers edition; exact list in the 2004 archive | 5×5 | 25 |
+| [`Deluxe.cub`](Deluxe.cub) | **Boggle Deluxe**: documented **1997** Parker Brothers edition; exact list in the 2004 archive | 5×5 | 25 |
 
-The two 4×4 sets have different letter frequencies and therefore different
-word-occurrence probabilities. The 5×5 Big and Deluxe/Master sets also
-differ: the four Big Boggle dice `ccenst`, `ddhnot`, `dhlnor`
-(one additional copy), and `iprrry` are replaced in Deluxe/Master by
+The distinction between *product introduction*, *edition date*, and *dice
+redesign* matters. The **1983** classic distribution predates that edition.
+Parker Brothers' **1987** box advertised a revised letter assortment, so
+the revised distribution was not first introduced in 1992.
+**1979** is the verified Big Boggle product launch; the exact first issue
+of every individual 25-die configuration is less firmly documented.
+The **1993 Master** and **1997 Deluxe** dates identify verified editions,
+not independently established first uses of their names or dice.
+
+The files `Deluxe.cub` and `Master.cub` are **byte-for-byte identical**.
+The 25-die `Big.cub` distribution differs in four dice: `ccenst`,
+`ddhnot`, one additional `dhlnor`, and `iprrry` instead of
 `ccnstw`, `ddlnor`, `dhhnot`, and `hiprry`, respectively.
 
-**Word-length convention:** The simulator requires a word to use at least
-**three physical dice**, for either board size. Standard 5×5 Big Boggle
-rules normally require at least **four written letters**; the program
-does not impose that extra edition-specific restriction. When interpreting
-5×5 output as playable Big Boggle words, omit three-letter entries.
-For example, `qua` uses just two dice (`Qu` and `a`) and is excluded
-by the simulator. Word-length rankings count the written `Qu` as two
-letters. Special-edition challenge/bonus scoring is not simulated.
+**Rules note:** Standard 4×4 Boggle allows words of at least three
+written letters; 5×5 Big Boggle normally requires at least **four**.
+The simulator retains its original independent requirement of at least
+three **physical dice** per word. The default `--min-length 3` preserves
+its prior behavior for either board size; use `--min-length 4` for the
+usual Big Boggle written-length cutoff. For example, `qua` uses only
+two physical dice (`Qu` and `a`) and is excluded even at a lower
+`--min-length`. Special-edition bonus scoring is not simulated.
 
-For descriptions and historical comparisons of the letter distributions,
-see [Bananagrammer's classic-versus-revised dice comparison](https://www.bananagrammer.com/2013/10/the-boggle-cube-redesign-and-its-effect.html)
-and [BoardGameGeek's Big Boggle entry](https://boardgamegeek.com/boardgame/10550/big-boggle).
+Historical references:
+
+- [Chris Long's five 2004 dice transcriptions, preserved by the Boggle-programming archive](https://www.gtoal.com/wordgames/boggle.html)
+- [Bananagrammer: 1970s/1983 versus 1987 redesign, dice comparison](https://www.bananagrammer.com/2013/10/the-boggle-cube-redesign-and-its-effect.html)
+- [BoardGameGeek: 1987 package advertised a revised letter assortment](https://boardgamegeek.com/thread/300565/review-from-a-boggle-veteran-and-beware-different)
+- [Winning Moves: Big Boggle debuted in 1979](https://winning-moves.com/images/BigBoggle_Rules_2023.pdf)
+- [BoardGameGeek: Boggle Master 1993 edition](https://boardgamegeek.com/boardgameversion/23978/parker-brothers-englishfrench-edition-1993)
+- [BoardGameGeek: Boggle Deluxe 1997 edition](https://boardgamegeek.com/boardgameversion/26118/parker-brothers-english-edition-1997)
 
 ## Dictionary
 
@@ -100,6 +124,12 @@ three Boggle dice, the program loads **178,548 words**, as shown in its
 startup diagnostics. Thus `words.txt` is a *Boggle-adapted TWL06 list*,
 rather than the current Scrabble dictionary or an arbitrary English word
 list. The original source of this repository's copy is not recorded.
+
+The loader applies the optional `--min-length N` filter to written
+spelling length **before** building the trie, so higher cutoffs can
+reduce memory use and search work. `Qu` contributes two written
+letters but occupies one die; the minimum of three physical dice
+remains in effect.
 
 The loader also accepts other whitespace-separated word lists:
 case is ignored, repeated words are deduplicated, and entries containing
