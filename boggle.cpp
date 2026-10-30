@@ -162,17 +162,21 @@ std::string tile_spelling(const std::string& word) {
 }
 
 struct Trie {
-    struct Node { uint32_t first_edge, degree, word; };
-    struct Edge { uint32_t packed; };
+    // BFS puts each node's children in one contiguous, alphabetically ordered
+    // range. A 26-bit letter mask and its first index replace all explicit edges.
+    struct Node { uint32_t first_child, mask, word; };
     struct BuildNode {
         std::array<uint32_t, 26> child;
         uint32_t word = no_word;
         BuildNode() { child.fill(absent); }
     };
     std::vector<Node> nodes;
-    std::vector<Edge> edges;
     std::array<uint32_t, 26> root{};
+    std::array<uint32_t, 26 * 26> pairs{};
     std::vector<std::string> words;
+    // Alphabetical word index -> BFS terminal index. Only aggregation uses this
+    // mapping; the search accesses the nearby counters for short words directly.
+    std::vector<uint32_t> counter_ids;
 
     explicit Trie(const std::string& filename, uint64_t min_length) {
         std::ifstream in(filename);
@@ -208,7 +212,8 @@ struct Trie {
             build[v].word = static_cast<uint32_t>(words.size());
             words.push_back(entry.first);
         }
-        // Breadth-first order groups equally short prefixes together.
+        // Appending each parent's children together in alphabetical order gives
+        // both good prefix locality and the contiguous-child invariant below.
         std::vector<uint32_t> order;
         order.reserve(build.size());
         order.push_back(0);
@@ -221,28 +226,43 @@ struct Trie {
         for (size_t i = 0; i < order.size(); ++i)
             renum[order[i]] = static_cast<uint32_t>(i);
         nodes.reserve(build.size());
-        edges.reserve(build.size() ? build.size() - 1 : 0);
+        counter_ids.resize(words.size());
+        uint32_t next_counter = 0;
+        uint32_t next_child = 1;
         for (uint32_t v : order) {
             const BuildNode& b = build[v];
-            uint32_t first = static_cast<uint32_t>(edges.size());
-            for (unsigned c = 0; c < 26; ++c)
-                if (b.child[c] != absent) edges.push_back({(renum[b.child[c]] << 5) | c});
-            nodes.push_back({first, static_cast<uint32_t>(edges.size()) - first, b.word});
+            // Give terminals BFS counter IDs while keeping words alphabetical
+            // for the existing reports. Workers need no extra lookup on a hit.
+            uint32_t word_id = no_word;
+            if (b.word != no_word) {
+                word_id = next_counter++;
+                counter_ids[b.word] = word_id;
+            }
+            uint32_t first = next_child, mask = 0;
+            for (unsigned c = 0; c < 26; ++c) {
+                if (b.child[c] != absent) {
+                    if (renum[b.child[c]] != next_child)
+                        throw std::runtime_error("Noncontiguous BFS children");
+                    ++next_child;
+                    mask |= uint32_t{1} << c;
+                }
+            }
+            nodes.push_back({first, mask, word_id});
         }
         for (int c = 0; c < 26; ++c)
             root[c] = build[0].child[c] == absent ? absent : renum[build[0].child[c]];
+        // Dense lookup for the first two tiles avoids high-degree root scans.
+        // No terminal is skipped: tile_spelling requires at least three dice.
+        for (unsigned a = 0; a < 26; ++a)
+            for (unsigned b = 0; b < 26; ++b)
+                pairs[26 * a + b] = root[a] == absent ? absent : child(root[a], b);
     }
 
-    // Most trie nodes have very few children; linear scans of compact edges
-    // avoid the cache footprint of a 26-pointer array on every node.
+    // The number of smaller child letters is the offset in the BFS range.
     uint32_t child(uint32_t node_id, uint8_t letter) const {
         const Node& n = nodes[node_id];
-        const Edge* begin = edges.data() + n.first_edge;
-        for (uint32_t i = 0; i < n.degree; ++i) {
-            if ((begin[i].packed & 31) == letter) return begin[i].packed >> 5;
-            if ((begin[i].packed & 31) > letter) break;
-        }
-        return absent;
+        const uint32_t bit = uint32_t{1} << letter;
+        return (n.mask & bit) ? n.first_child + __builtin_popcount(n.mask & (bit - 1)) : absent;
     }
 };
 
@@ -278,6 +298,43 @@ struct alignas(64) Worker {
     std::vector<uint64_t> counts;
     std::vector<uint32_t> seen;
     uint32_t epoch = 0;
+    uint32_t neighbor_letters[25]{};
+
+    // Inline 32-bit SWAR population count avoids a library call in generic
+    // builds. GCC recognizes this idiom and uses POPCNT when the target enables
+    // it (for example -march=znver3); no CPU-specific instruction is required.
+    static unsigned count_bits(uint32_t x) {
+        x = x - ((x >> 1) & 0x55555555u);
+        x = (x & 0x33333333u) + ((x >> 2) & 0x33333333u);
+        x = (x + (x >> 4)) & 0x0f0f0f0fu;
+        return (x * 0x01010101u) >> 24;
+    }
+
+    // Specializing the fixed board geometry turns mask construction into direct
+    // ORs, without a per-board loop over set bits of each adjacency mask.
+    template<unsigned Side, unsigned Square>
+    static uint32_t adjacent_letters(const uint32_t* bits) {
+        constexpr unsigned r = Square / Side, c = Square % Side;
+        uint32_t mask = 0;
+        if constexpr (r > 0) {
+            if constexpr (c > 0) mask |= bits[Square - Side - 1];
+            mask |= bits[Square - Side];
+            if constexpr (c + 1 < Side) mask |= bits[Square - Side + 1];
+        }
+        if constexpr (c > 0) mask |= bits[Square - 1];
+        if constexpr (c + 1 < Side) mask |= bits[Square + 1];
+        if constexpr (r + 1 < Side) {
+            if constexpr (c > 0) mask |= bits[Square + Side - 1];
+            mask |= bits[Square + Side];
+            if constexpr (c + 1 < Side) mask |= bits[Square + Side + 1];
+        }
+        return mask;
+    }
+
+    template<unsigned Side, std::size_t... Squares>
+    void prepare_neighbors(const uint32_t* bits, std::index_sequence<Squares...>) {
+        ((neighbor_letters[Squares] = adjacent_letters<Side, Squares>(bits)), ...);
+    }
 
     explicit Worker(std::size_t n) : counts(n, 0), seen(n, 0) {}
 
@@ -290,13 +347,21 @@ struct alignas(64) Worker {
         }
         uint32_t possible = dice.neighbors[square] & ~used;
         const Trie::Node& n = trie.nodes[node];
-        const Trie::Edge* edges = trie.edges.data() + n.first_edge;
-        for (uint32_t i = 0; i < n.degree; ++i) {
-            uint32_t matching = possible & letter_positions[edges[i].packed & 31];
+        // This board-level filter includes already used adjacent squares.
+        // It is conservative: matching below applies the exact unused mask.
+        uint32_t children = n.mask & neighbor_letters[square];
+        while (children) {
+            unsigned letter = static_cast<unsigned>(__builtin_ctz(children));
+            children &= children - 1;
+            uint32_t matching = possible & letter_positions[letter];
+            if (!matching) continue;
+            // Rank only after finding an unused match, avoiding wasted work
+            // when this letter occurs solely on already used adjacent squares.
+            uint32_t child = n.first_child + count_bits(n.mask & ((uint32_t{1} << letter) - 1));
             while (matching) {
                 unsigned next_square = static_cast<unsigned>(__builtin_ctz(matching));
                 matching &= matching - 1;
-                visit(trie, dice, letter_positions, next_square, (edges[i].packed >> 5),
+                visit(trie, dice, letter_positions, next_square, child,
                       used | (uint32_t{1} << next_square));
             }
         }
@@ -316,14 +381,29 @@ struct alignas(64) Worker {
             for (unsigned j = n - 1; j > 0; --j)
                 std::swap(permutation[j], permutation[rng.uniform(j + 1)]);
             uint32_t letter_positions[26]{};
+            uint32_t letter_bits[25];
             for (unsigned j = 0; j < n; ++j) {
                 board[j] = dice.faces[permutation[j]][rng.uniform(6)];
                 letter_positions[board[j]] |= uint32_t{1} << j;
+                letter_bits[j] = uint32_t{1} << board[j];
             }
+            if (dice.side == 4)
+                prepare_neighbors<4>(letter_bits, std::make_index_sequence<16>{});
+            else
+                prepare_neighbors<5>(letter_bits, std::make_index_sequence<25>{});
+            // Begin at depth two through the dense prefix table. All terminal
+            // words use at least three physical dice, including words with Qu.
             for (unsigned j = 0; j < n; ++j) {
-                uint32_t root_child = trie.root[board[j]];
-                if (root_child != absent)
-                    visit(trie, dice, letter_positions, j, root_child, uint32_t{1} << j);
+                uint32_t adjacent = dice.neighbors[j];
+                const uint32_t* pairs = trie.pairs.data() + 26 * board[j];
+                while (adjacent) {
+                    unsigned k = static_cast<unsigned>(__builtin_ctz(adjacent));
+                    adjacent &= adjacent - 1;
+                    uint32_t child = pairs[board[k]];
+                    if (child != absent)
+                        visit(trie, dice, letter_positions, k, child,
+                              (uint32_t{1} << j) | (uint32_t{1} << k));
+                }
             }
         }
     }
@@ -402,14 +482,16 @@ int main(int argc, char** argv) {
         for (auto& t : threads) t.join();
         auto end = std::chrono::steady_clock::now();
         std::vector<uint64_t> totals(trie.words.size(), 0);
+        // Restore alphabetical dictionary indices once, outside the search.
         for (const auto& worker : workers)
-            for (std::size_t j = 0; j < totals.size(); ++j) totals[j] += worker.counts[j];
+            for (std::size_t j = 0; j < totals.size(); ++j)
+                totals[j] += worker.counts[trie.counter_ids[j]];
         report_top(std::cout, trie, totals, opt.simulations, opt.top);
         if (!opt.csv.empty()) save_csv(opt.csv, trie, totals);
         double loading = std::chrono::duration<double>(load_end - load_start).count();
         double simulation = std::chrono::duration<double>(end - start).count();
         std::cerr << "Dictionary: " << trie.words.size() << " words, " << trie.nodes.size()
-                  << " trie nodes, " << trie.edges.size() << " edges; load " << loading << " s\n"
+                  << " trie nodes, " << (trie.nodes.size() - 1) << " edges; load " << loading << " s\n"
                   << "Simulated " << opt.simulations << " boards on " << workers_count << " worker(s)"
                   << " in " << simulation << " s";
         if (simulation > 0) std::cerr << " (" << static_cast<double>(opt.simulations) / simulation << " boards/s)";

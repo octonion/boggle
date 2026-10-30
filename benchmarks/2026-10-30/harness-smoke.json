@@ -1,0 +1,85 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+  "arguments": {
+    "baseline": "/workspace/scratch/a76f786daae6/experiment_root/baseline",
+    "candidate": "boggle",
+    "dice": "Boggle92.cub",
+    "dictionary": "words.txt",
+    "sims": 2000,
+    "threads": "1,4",
+    "repeat": 1,
+    "seed": 18446744073709551615,
+    "min_length": 3,
+    "json": "benchmarks/2026-10-30/harness-smoke.json"
+  },
+  "input_sha256": {
+    "/workspace/scratch/a76f786daae6/experiment_root/baseline": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "boggle": "066738b16711e75152af3de440e18aa32293c9be11fe07646268901433d848c0",
+    "Boggle92.cub": "ee3ffbf5fa4c5c9b290a42155331ed03e9dce24063b98986920c00287fc9942f",
+    "words.txt": "29e12bc1ed4313d1bea79920ba37fecbbff4f9eb7713befc48019e1ed9bd929f"
+  },
+  "trials": [
+    {
+      "version": "candidate",
+      "workers": 1,
+      "trial": 1,
+      "seconds": 0.0208211,
+      "summary_sha256": "b9d471f713988ddca95ced5a75afd1e4db7d6f223e96b19fe8e25ce8b09b9754",
+      "csv_sha256": "579c3666bb548b657877d0bbacf03d09510302e9b17864315097e07493167aee"
+    },
+    {
+      "version": "baseline",
+      "workers": 1,
+      "trial": 1,
+      "seconds": 0.0340645,
+      "summary_sha256": "b9d471f713988ddca95ced5a75afd1e4db7d6f223e96b19fe8e25ce8b09b9754",
+      "csv_sha256": "579c3666bb548b657877d0bbacf03d09510302e9b17864315097e07493167aee"
+    },
+    {
+      "version": "baseline",
+      "workers": 4,
+      "trial": 1,
+      "seconds": 0.00923068,
+      "summary_sha256": "b9d471f713988ddca95ced5a75afd1e4db7d6f223e96b19fe8e25ce8b09b9754",
+      "csv_sha256": "579c3666bb548b657877d0bbacf03d09510302e9b17864315097e07493167aee"
+    },
+    {
+      "version": "candidate",
+      "workers": 4,
+      "trial": 1,
+      "seconds": 0.00612184,
+      "summary_sha256": "b9d471f713988ddca95ced5a75afd1e4db7d6f223e96b19fe8e25ce8b09b9754",
+      "csv_sha256": "579c3666bb548b657877d0bbacf03d09510302e9b17864315097e07493167aee"
+    }
+  ],
+  "summaries": [
+    {
+      "workers": 1,
+      "baseline_median": 0.0340645,
+      "candidate_median": 0.0208211,
+      "throughput_ratio": 1.63605669248983,
+      "baseline_range": [
+        0.0340645,
+        0.0340645
+      ],
+      "candidate_range": [
+        0.0208211,
+        0.0208211
+      ]
+    },
+    {
+      "workers": 4,
+      "baseline_median": 0.00923068,
+      "candidate_median": 0.00612184,
+      "throughput_ratio": 1.5078277119297465,
+      "baseline_range": [
+        0.00923068,
+        0.00923068
+      ],
+      "candidate_range": [
+        0.00612184,
+        0.00612184
+      ]
+    }
+  ]
+}

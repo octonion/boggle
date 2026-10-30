@@ -1,0 +1,62 @@
+[
+  {
+    "dice": "Boggle83.cub",
+    "minimum": 3,
+    "simulations": 10000,
+    "seed": 18446744073709551615,
+    "baseline_workers": 1,
+    "candidate_workers": 4,
+    "baseline_sha256": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_sha256": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "summary_sha256": "b064a7132fb91ce95fa8a10897d63f6678d5783d8b4a7b6605815f622554352d",
+    "csv_sha256": "ae059720aa988097caa2850f9fab783fc8c9d68bd60fdffafd07f0ab5768d410"
+  },
+  {
+    "dice": "Boggle92.cub",
+    "minimum": 3,
+    "simulations": 10000,
+    "seed": 18446744073709551615,
+    "baseline_workers": 1,
+    "candidate_workers": 4,
+    "baseline_sha256": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_sha256": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "summary_sha256": "f3601bf683af298f0d2f15437503a0d86a030b6031eeff40ea2a264a8ad93b29",
+    "csv_sha256": "6e90f8ef4aa935c7dfd357973830875e518bb5e542b17fcb0ab69f56441dcee7"
+  },
+  {
+    "dice": "Big.cub",
+    "minimum": 4,
+    "simulations": 10000,
+    "seed": 18446744073709551615,
+    "baseline_workers": 1,
+    "candidate_workers": 4,
+    "baseline_sha256": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_sha256": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "summary_sha256": "f32f307d65d58c39a2ac970d31d44867a069632695a1efba47447262042f062b",
+    "csv_sha256": "c10701dcab6d7cb187d8125b02b7153bcee7192121cbc202ecfa8e95eb77cac7"
+  },
+  {
+    "dice": "Deluxe.cub",
+    "minimum": 4,
+    "simulations": 10000,
+    "seed": 18446744073709551615,
+    "baseline_workers": 1,
+    "candidate_workers": 4,
+    "baseline_sha256": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_sha256": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "summary_sha256": "61245e701195454d08deb42c4bf4df51f4d41c1914169834f0bd6bc23436c30c",
+    "csv_sha256": "446d2808f59c316d61433fd9302cc55b668ef8e39767f74ff605f5957c3ae056"
+  },
+  {
+    "dice": "Master.cub",
+    "minimum": 4,
+    "simulations": 10000,
+    "seed": 18446744073709551615,
+    "baseline_workers": 1,
+    "candidate_workers": 4,
+    "baseline_sha256": "8e674bf2536392402c5aa040d0d89c2c26ac8cf3e6ceb87c29084e9fd451ff11",
+    "candidate_sha256": "adad299051a15730afdc621f4c11c9c170b5d0c7daaff61fdf0cc74a8e55832d",
+    "summary_sha256": "61245e701195454d08deb42c4bf4df51f4d41c1914169834f0bd6bc23436c30c",
+    "csv_sha256": "446d2808f59c316d61433fd9302cc55b668ef8e39767f74ff605f5957c3ae056"
+  }
+]
